@@ -5,13 +5,14 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Linking,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors, Shadows } from '@/constants/theme';
 import { useCart } from '@/context/cart';
 import { useAuth } from '@/context/auth';
+import { getProductImage } from '@/lib/products';
 
 export default function CartScreen() {
   const router = useRouter();
@@ -20,13 +21,6 @@ export default function CartScreen() {
   const [signInLoading, setSignInLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const webUrl = process.env.EXPO_PUBLIC_WEB_URL || 'https://puredrop-swart.vercel.app';
-
-  const handleOpenCheckout = () => {
-    const target = `${webUrl.replace(/\/$/, '')}/checkout`;
-    Linking.openURL(target).catch(() => {});
-  };
 
   const handleSignIn = async () => {
     setSignInLoading(true);
@@ -64,7 +58,7 @@ export default function CartScreen() {
   if (authLoading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={Colors.primaryDark} />
       </View>
     );
   }
@@ -73,12 +67,12 @@ export default function CartScreen() {
   if (!user) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <View style={styles.authCard}>
-          <View style={styles.authIconCircle}>
-            <Text style={styles.authIconText}>🔒</Text>
+        <View style={styles.glassCard}>
+          <View style={styles.iconCircle}>
+            <Text style={styles.iconCircleText}>🔒</Text>
           </View>
-          <Text style={styles.authTitle}>Sign in to view your cart</Text>
-          <Text style={styles.authSubtitle}>
+          <Text style={styles.cardTitle}>Sign in to view your cart</Text>
+          <Text style={styles.cardSubtitle}>
             Your cart is synchronized live across all your devices using your Google account.
           </Text>
 
@@ -89,7 +83,7 @@ export default function CartScreen() {
           )}
 
           <TouchableOpacity
-            style={styles.signInButton}
+            style={styles.primaryGlossBtn}
             activeOpacity={0.85}
             onPress={handleSignIn}
             disabled={signInLoading}
@@ -97,7 +91,7 @@ export default function CartScreen() {
             {signInLoading ? (
               <ActivityIndicator size="small" color="#ffffff" />
             ) : (
-              <Text style={styles.signInButtonText}>Continue with Google</Text>
+              <Text style={styles.primaryGlossBtnText}>Continue with Google</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -108,20 +102,20 @@ export default function CartScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {itemCount === 0 ? (
-        <View style={styles.emptyCard}>
-          <View style={styles.emptyIconCircle}>
-            <Text style={styles.emptyIconText}>🛒</Text>
+        <View style={styles.glassCard}>
+          <View style={styles.iconCircle}>
+            <Text style={styles.iconCircleText}>🛒</Text>
           </View>
-          <Text style={styles.emptyTitle}>Your cart is empty</Text>
-          <Text style={styles.emptySubtitle}>
-            Explore our pure water batches, bottle packs, and dispenser refills to get started.
+          <Text style={styles.cardTitle}>Your cart is empty</Text>
+          <Text style={styles.cardSubtitle}>
+            {"You haven't added any pure water batches yet. Pick your batch size or dispenser refill to get started."}
           </Text>
           <TouchableOpacity
-            style={styles.browseButton}
+            style={styles.primaryGlossBtn}
             activeOpacity={0.85}
             onPress={() => router.push('/')}
           >
-            <Text style={styles.browseButtonText}>Browse Products</Text>
+            <Text style={styles.primaryGlossBtnText}>Browse Water Products</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -132,34 +126,52 @@ export default function CartScreen() {
             </View>
           )}
 
-          {/* Cart Header */}
-          <View style={styles.cartHeaderRow}>
-            <Text style={styles.cartSectionTitle}>Items in Cart</Text>
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>{itemCount} {itemCount === 1 ? 'item' : 'items'}</Text>
+          {/* Cart Header matching Web */}
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.headerEyebrow}>REVIEW ORDER</Text>
+              <Text style={styles.headerTitle}>Your Water Cart</Text>
             </View>
+            <TouchableOpacity onPress={() => clearCart()}>
+              <Text style={styles.clearText}>Clear cart</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Itemized List */}
-          <View style={styles.itemsList}>
-            {items.map((item) => {
+          {/* Items Glass Card matching Web */}
+          <View style={styles.glassPanel}>
+            {items.map((item, index) => {
               const unitPrice = item.product?.price_ngn || 0;
               const lineTotal = unitPrice * item.quantity;
               const isItemBusy = actionLoadingId === item.product_id;
+              const imageSource = getProductImage(item.product?.name || '');
 
               return (
-                <View key={item.id} style={styles.itemCard}>
+                <View
+                  key={item.id}
+                  style={[
+                    styles.itemRow,
+                    index < items.length - 1 && styles.itemRowBorder,
+                  ]}
+                >
                   <View style={styles.itemTop}>
-                    <View style={styles.itemInfo}>
-                      <Text style={styles.itemName}>{item.product?.name || 'Water Product'}</Text>
-                      <Text style={styles.unitPrice}>{formatNaira(unitPrice)} each</Text>
+                    <View style={styles.imageThumbnail}>
+                      <Image
+                        source={imageSource}
+                        style={styles.thumbnailImg}
+                        resizeMode="contain"
+                      />
                     </View>
-                    <Text style={styles.lineTotal}>{formatNaira(lineTotal)}</Text>
+                    <View style={styles.itemDetails}>
+                      <Text style={styles.itemName}>{item.product?.name || 'Water'}</Text>
+                      <Text style={styles.itemUnitPrice}>
+                        Unit Price: {formatNaira(unitPrice)}
+                      </Text>
+                    </View>
                   </View>
 
-                  <View style={styles.itemBottom}>
-                    {/* Stepper Controls */}
-                    <View style={styles.stepper}>
+                  <View style={styles.itemControlsRow}>
+                    {/* Stepper */}
+                    <View style={styles.stepperPill}>
                       <TouchableOpacity
                         style={[
                           styles.stepperBtn,
@@ -167,21 +179,13 @@ export default function CartScreen() {
                         ]}
                         disabled={item.quantity <= 1 || isItemBusy}
                         onPress={() => handleUpdateQuantity(item.product_id, item.quantity - 1)}
-                        accessibilityLabel="Decrease quantity"
                       >
-                        <Text
-                          style={[
-                            styles.stepperBtnText,
-                            item.quantity <= 1 && styles.stepperBtnTextDisabled,
-                          ]}
-                        >
-                          −
-                        </Text>
+                        <Text style={styles.stepperBtnText}>−</Text>
                       </TouchableOpacity>
 
                       <View style={styles.stepperValueContainer}>
                         {isItemBusy ? (
-                          <ActivityIndicator size="small" color={Colors.primary} />
+                          <ActivityIndicator size="small" color={Colors.primaryDark} />
                         ) : (
                           <Text style={styles.stepperValue}>{item.quantity}</Text>
                         )}
@@ -194,27 +198,21 @@ export default function CartScreen() {
                         ]}
                         disabled={item.quantity >= 99 || isItemBusy}
                         onPress={() => handleUpdateQuantity(item.product_id, item.quantity + 1)}
-                        accessibilityLabel="Increase quantity"
                       >
-                        <Text
-                          style={[
-                            styles.stepperBtnText,
-                            item.quantity >= 99 && styles.stepperBtnTextDisabled,
-                          ]}
-                        >
-                          +
-                        </Text>
+                        <Text style={styles.stepperBtnText}>+</Text>
                       </TouchableOpacity>
                     </View>
 
-                    {/* Remove Action */}
+                    {/* Line Total */}
+                    <Text style={styles.lineTotal}>{formatNaira(lineTotal)}</Text>
+
+                    {/* Remove */}
                     <TouchableOpacity
                       style={styles.removeBtn}
                       disabled={isItemBusy}
                       onPress={() => handleRemoveItem(item.product_id)}
-                      accessibilityLabel="Remove item"
                     >
-                      <Text style={styles.removeBtnText}>Remove</Text>
+                      <Text style={styles.removeBtnText}>✕</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -222,67 +220,28 @@ export default function CartScreen() {
             })}
           </View>
 
-          {/* Delivery Region Info */}
-          <View style={styles.regionCard}>
-            <Text style={styles.regionTitle}>📍 Lagos Delivery Direct</Text>
-            <Text style={styles.regionText}>
-              Delivery to Akoka, Yaba, Surulere & Mainland. Schedules available for one-time orders or recurring weekly/monthly batches.
-            </Text>
-          </View>
-
-          {/* Order Summary Card */}
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>Order Summary</Text>
-
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Items</Text>
-              <Text style={styles.summaryValue}>{itemCount}</Text>
-            </View>
-
+          {/* Order Summary Glass Card matching Web */}
+          <View style={styles.glassPanel}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Subtotal</Text>
               <Text style={styles.summaryValue}>{formatNaira(totalAmount)}</Text>
             </View>
 
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Delivery Fee</Text>
-              <Text style={styles.freeBadge}>FREE (Demo)</Text>
-            </View>
-
-            <View style={styles.summaryDivider} />
-
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total Due</Text>
-              <Text style={styles.totalValue}>{formatNaira(totalAmount)}</Text>
-            </View>
-
-            {/* Clear Cart */}
             <TouchableOpacity
-              style={styles.clearCartBtn}
-              onPress={() => clearCart()}
-            >
-              <Text style={styles.clearCartText}>Clear all items</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Checkout CTA */}
-          <View style={styles.checkoutActionContainer}>
-            <TouchableOpacity
-              style={styles.primaryCheckoutBtn}
+              style={styles.primaryGlossBtn}
               activeOpacity={0.85}
               onPress={() => router.push('/checkout')}
             >
-              <Text style={styles.primaryCheckoutText}>
+              <Text style={styles.primaryGlossBtnText}>
                 Proceed to Checkout ({formatNaira(totalAmount)})
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.webFallbackBtn}
-              activeOpacity={0.7}
-              onPress={handleOpenCheckout}
+              style={styles.backLink}
+              onPress={() => router.push('/')}
             >
-              <Text style={styles.webFallbackText}>Or complete on website ↗</Text>
+              <Text style={styles.backLinkText}>← Add more water products</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -294,7 +253,7 @@ export default function CartScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.background, // #cae8ff sky water background
   },
   centerContainer: {
     flex: 1,
@@ -304,350 +263,231 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 48,
     flexGrow: 1,
   },
-  authCard: {
-    backgroundColor: Colors.surface,
-    padding: 28,
+  glassCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     borderRadius: 24,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.95)',
+    padding: 28,
     alignItems: 'center',
     marginTop: 40,
     gap: 12,
-    ...Shadows.card,
+    ...Shadows.glassPanel,
   },
-  authIconCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: Colors.primaryLight,
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#e1f3ff',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
-  authIconText: {
+  iconCircleText: {
     fontSize: 32,
   },
-  authTitle: {
-    fontSize: 20,
+  cardTitle: {
+    fontSize: 22,
     fontWeight: '800',
-    color: Colors.text,
+    color: '#001d35',
     textAlign: 'center',
   },
-  authSubtitle: {
+  cardSubtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: '#3f4753',
     textAlign: 'center',
     maxWidth: 290,
     lineHeight: 20,
   },
-  signInButton: {
-    marginTop: 12,
-    backgroundColor: Colors.primary,
+  primaryGlossBtn: {
+    backgroundColor: '#0099ff',
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 24,
     width: '100%',
-    maxWidth: 280,
     alignItems: 'center',
-    ...Shadows.button,
+    marginTop: 6,
+    ...Shadows.buttonGloss,
   },
-  signInButtonText: {
+  primaryGlossBtnText: {
     color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 15,
+    fontWeight: '800',
+    fontSize: 14,
   },
   errorBox: {
     backgroundColor: Colors.dangerLight,
     borderWidth: 1,
     borderColor: Colors.dangerBorder,
     padding: 12,
-    borderRadius: 12,
-    width: '100%',
+    borderRadius: 14,
   },
   errorText: {
     color: Colors.danger,
     fontSize: 13,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  emptyCard: {
-    backgroundColor: Colors.surface,
-    padding: 32,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    marginTop: 40,
-    gap: 12,
-    ...Shadows.card,
-  },
-  emptyIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  emptyIconText: {
-    fontSize: 36,
-  },
-  emptyTitle: {
-    fontSize: 21,
-    fontWeight: '800',
-    color: Colors.text,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    maxWidth: 280,
-    lineHeight: 20,
-  },
-  browseButton: {
-    marginTop: 12,
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 14,
-    ...Shadows.button,
-  },
-  browseButtonText: {
-    color: '#ffffff',
     fontWeight: '700',
-    fontSize: 15,
+    textAlign: 'center',
   },
   cartContainer: {
     gap: 16,
   },
-  cartHeaderRow: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     paddingHorizontal: 2,
+    marginBottom: 2,
   },
-  cartSectionTitle: {
-    fontSize: 19,
+  headerEyebrow: {
+    fontSize: 11,
     fontWeight: '800',
-    color: Colors.text,
+    color: '#0061a5',
+    letterSpacing: 0.8,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#001d35',
     letterSpacing: -0.3,
   },
-  countBadge: {
-    backgroundColor: Colors.surfaceSubtle,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
-  countBadgeText: {
+  clearText: {
     fontSize: 12,
     fontWeight: '700',
-    color: Colors.textSecondary,
+    color: '#ef4444',
   },
-  itemsList: {
+  glassPanel: {
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.95)',
+    padding: 18,
+    gap: 14,
+    ...Shadows.glassPanel,
+  },
+  itemRow: {
+    paddingVertical: 10,
     gap: 12,
   },
-  itemCard: {
-    backgroundColor: Colors.surface,
-    padding: 16,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 14,
-    ...Shadows.card,
+  itemRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(186, 230, 253, 0.6)',
   },
   itemTop: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 12,
   },
-  itemInfo: {
+  imageThumbnail: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: '#eff8ff',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  thumbnailImg: {
+    width: '90%',
+    height: '90%',
+  },
+  itemDetails: {
     flex: 1,
   },
   itemName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  unitPrice: {
-    fontSize: 13,
-    color: Colors.textMuted,
-  },
-  lineTotal: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.3,
+    color: '#001d35',
+    marginBottom: 2,
   },
-  itemBottom: {
+  itemUnitPrice: {
+    fontSize: 12,
+    color: '#3f4753',
+  },
+  itemControlsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
   },
-  stepper: {
+  stepperPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surfaceSubtle,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-  },
-  stepperBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.surface,
-  },
-  stepperBtnDisabled: {
-    backgroundColor: Colors.surfaceSubtle,
-    opacity: 0.4,
-  },
-  stepperBtnText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  stepperBtnTextDisabled: {
-    color: Colors.textMuted,
-  },
-  stepperValueContainer: {
-    width: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepperValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  removeBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: Colors.dangerLight,
-  },
-  removeBtnText: {
-    color: Colors.danger,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  regionCard: {
-    backgroundColor: Colors.primaryLight,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.primaryBorder,
-    gap: 4,
-  },
-  regionTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: Colors.primaryDark,
-  },
-  regionText: {
-    fontSize: 12,
-    color: Colors.primaryDark,
-    lineHeight: 18,
-  },
-  summaryCard: {
-    backgroundColor: Colors.surface,
-    padding: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 10,
-    ...Shadows.card,
+    borderColor: '#bae6fd',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
   },
-  summaryTitle: {
-    fontSize: 18,
+  stepperBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperBtnDisabled: {
+    opacity: 0.3,
+  },
+  stepperBtnText: {
+    fontSize: 16,
     fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.3,
+    color: '#001d35',
+  },
+  stepperValueContainer: {
+    width: 32,
+    alignItems: 'center',
+  },
+  stepperValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#001d35',
+  },
+  lineTotal: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#001d35',
+  },
+  removeBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#fee2e2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeBtnText: {
+    color: '#ef4444',
+    fontSize: 12,
+    fontWeight: '800',
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(186, 230, 253, 0.6)',
   },
   summaryLabel: {
-    fontSize: 14,
-    color: Colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#3f4753',
   },
   summaryValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  freeBadge: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.success,
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: Colors.borderLight,
-    marginVertical: 4,
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  totalLabel: {
-    fontSize: 17,
+    fontSize: 22,
     fontWeight: '800',
-    color: Colors.text,
+    color: '#001d35',
   },
-  totalValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: Colors.primaryDark,
-    letterSpacing: -0.3,
-  },
-  clearCartBtn: {
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  clearCartText: {
-    color: Colors.danger,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  checkoutActionContainer: {
-    gap: 10,
-    marginTop: 4,
-  },
-  primaryCheckoutBtn: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 15,
-    borderRadius: 16,
+  backLink: {
     alignItems: 'center',
-    ...Shadows.button,
+    paddingVertical: 6,
   },
-  primaryCheckoutText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
-  webFallbackBtn: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  webFallbackText: {
+  backLinkText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: Colors.textMuted,
+    fontWeight: '700',
+    color: '#0061a5',
   },
 });

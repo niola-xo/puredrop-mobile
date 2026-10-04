@@ -1,9 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Modal,
+  Image,
+} from 'react-native';
+import { useRouter } from 'expo-router';
 import { Colors, Shadows } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { useCart } from '@/context/cart';
 import { useAuth } from '@/context/auth';
+import { getProductImage, getProductBadge } from '@/lib/products';
 
 interface Product {
   id: string;
@@ -14,7 +25,9 @@ interface Product {
 }
 
 export default function ProductsScreen() {
-  const { items, addToCart } = useCart();
+  const router = useRouter();
+  const scrollRef = useRef<ScrollView>(null);
+  const { addToCart } = useCart();
   const { user, signInWithGoogle } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -29,11 +42,11 @@ export default function ProductsScreen() {
     try {
       setLoading(true);
       setError(null);
-      const { data, error: fetchError } = await supabase
+      const { data, fetchError } = await supabase
         .from('products')
         .select('id, name, description, price_ngn, sort_order')
         .eq('active', true)
-        .order('sort_order', { ascending: true });
+        .order('sort_order', { ascending: true }) as any;
 
       if (fetchError) {
         setError(fetchError.message);
@@ -93,7 +106,7 @@ export default function ProductsScreen() {
       setRecentlyAddedId(product.id);
       setTimeout(() => {
         setRecentlyAddedId((prev) => (prev === product.id ? null : prev));
-      }, 1800);
+      }, 1500);
     }
   };
 
@@ -101,50 +114,85 @@ export default function ProductsScreen() {
     return `₦${price.toLocaleString()}`;
   };
 
-  const getProductIcon = (name: string) => {
-    const lower = name.toLowerCase();
-    if (lower.includes('dispenser') || lower.includes('refill')) return '🚰';
-    if (lower.includes('table water') || lower.includes('pack')) return '📦';
-    return '💧';
-  };
-
-  const getProductIconBg = (name: string) => {
-    const lower = name.toLowerCase();
-    if (lower.includes('dispenser') || lower.includes('refill')) return '#eff6ff';
-    if (lower.includes('table water') || lower.includes('pack')) return '#ecfdf5';
-    return '#f0f9ff';
-  };
-
-  const getQuantityInCart = (productId: string) => {
-    const cartItem = items.find((i) => i.product_id === productId);
-    return cartItem ? cartItem.quantity : 0;
-  };
-
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Modern Hero Banner */}
-      <View style={styles.heroCard}>
-        <View style={styles.heroBadgeRow}>
-          <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeText}>💧 LAGOS DIRECT REFILL</Text>
-          </View>
-          <Text style={styles.heroLocation}>Akoka · Yaba · Mainland</Text>
+    <ScrollView
+      ref={scrollRef}
+      style={styles.container}
+      contentContainerStyle={styles.content}
+    >
+      {/* Hero Section matching Web Frutiger Aero Panel */}
+      <View style={styles.heroPanel}>
+        <View style={styles.hubBadge}>
+          <Text style={styles.hubBadgeIcon}>💧</Text>
+          <Text style={styles.hubBadgeText}>Akoka & Yaba Direct Factory Supply</Text>
         </View>
 
-        <Text style={styles.heroTitle}>Fresh, Pure Water at Factory Prices</Text>
-        <Text style={styles.heroSubtitle}>
-          Order 19L dispenser refills, pure water batches, and bottled packs with fast local delivery.
+        <Text style={styles.heroTitle}>
+          Fresh Pure Water Delivered to Your Doorstep,{' '}
+          <Text style={styles.heroTitleHighlight}>On Your Schedule</Text>
         </Text>
 
-        <View style={styles.trustBadgesRow}>
-          <View style={styles.trustPill}>
-            <Text style={styles.trustPillText}>⚡ Same-Day Delivery</Text>
+        <Text style={styles.heroSubtitle}>
+          Never run out of pure water again. Pick your batch size, choose weekly or monthly
+          deliveries, and select your preferred weekday. Our factory drivers handle the rest.
+        </Text>
+
+        <View style={styles.heroButtonsRow}>
+          <TouchableOpacity
+            style={styles.heroPrimaryBtn}
+            activeOpacity={0.85}
+            onPress={() => {
+              scrollRef.current?.scrollTo({ y: 480, animated: true });
+            }}
+          >
+            <Text style={styles.heroPrimaryBtnText}>Order Water Now</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.heroSecondaryBtn}
+            activeOpacity={0.85}
+            onPress={() => router.push('/cart')}
+          >
+            <Text style={styles.heroSecondaryBtnText}>View My Cart</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 3 Step Glass Cards (matching media_1791153522629.jpg) */}
+        <View style={styles.stepsContainer}>
+          <View style={styles.stepCard}>
+            <View style={styles.stepNumberBadge}>
+              <Text style={styles.stepNumberText}>1</Text>
+            </View>
+            <View style={styles.stepInfo}>
+              <Text style={styles.stepTitle}>Pick Your Batch</Text>
+              <Text style={styles.stepDesc}>
+                5-bag, 10-bag, or 20-bag sachet batches or dispenser refills
+              </Text>
+            </View>
           </View>
-          <View style={styles.trustPill}>
-            <Text style={styles.trustPillText}>🛡️ Factory Pure</Text>
+
+          <View style={styles.stepCard}>
+            <View style={styles.stepNumberBadge}>
+              <Text style={styles.stepNumberText}>2</Text>
+            </View>
+            <View style={styles.stepInfo}>
+              <Text style={styles.stepTitle}>Choose Your Day</Text>
+              <Text style={styles.stepDesc}>
+                Select the weekday you are home for regular weekly or monthly delivery
+              </Text>
+            </View>
           </View>
-          <View style={styles.trustPill}>
-            <Text style={styles.trustPillText}>🔁 Subscriptions</Text>
+
+          <View style={styles.stepCard}>
+            <View style={styles.stepNumberBadge}>
+              <Text style={styles.stepNumberText}>3</Text>
+            </View>
+            <View style={styles.stepInfo}>
+              <Text style={styles.stepTitle}>Factory Driver Delivery</Text>
+              <Text style={styles.stepDesc}>
+                Direct from our Akoka factory right to your compound
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -155,107 +203,101 @@ export default function ProductsScreen() {
         </View>
       )}
 
-      {/* Catalog Section */}
-      <View style={styles.catalogSection}>
-        <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>Available Products</Text>
-            <Text style={styles.sectionSubtitle}>Tap to add to your live cart</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.refreshButton}
-            onPress={fetchProducts}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.refreshText}>↻ Refresh</Text>
-          </TouchableOpacity>
+      {/* Catalog Header matching Web (DIRECT FROM HUB, Factory Water Batches) */}
+      <View style={styles.catalogHeader}>
+        <View>
+          <Text style={styles.catalogEyebrow}>DIRECT FROM HUB</Text>
+          <Text style={styles.catalogTitle}>Factory Water Batches</Text>
         </View>
-
-        {loading ? (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={styles.loadingText}>Fetching available water inventory...</Text>
-          </View>
-        ) : error ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorIcon}>⚠️</Text>
-            <Text style={styles.errorTitle}>Could not load catalog</Text>
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={fetchProducts}>
-              <Text style={styles.retryButtonText}>Try Again</Text>
-            </TouchableOpacity>
-          </View>
-        ) : products.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No products available right now.</Text>
-          </View>
-        ) : (
-          <View style={styles.cardsList}>
-            {products.map((product) => {
-              const qtyInCart = getQuantityInCart(product.id);
-              const isAdding = addingId === product.id;
-              const isJustAdded = recentlyAddedId === product.id;
-
-              return (
-                <View key={product.id} style={styles.productCard}>
-                  <View style={styles.cardTop}>
-                    <View
-                      style={[
-                        styles.iconContainer,
-                        { backgroundColor: getProductIconBg(product.name) },
-                      ]}
-                    >
-                      <Text style={styles.productIcon}>{getProductIcon(product.name)}</Text>
-                    </View>
-
-                    <View style={styles.titleArea}>
-                      <View style={styles.titleRow}>
-                        <Text style={styles.productName}>{product.name}</Text>
-                      </View>
-                      <Text style={styles.productDescription}>{product.description}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.cardDivider} />
-
-                  <View style={styles.cardBottom}>
-                    <View style={styles.priceContainer}>
-                      <Text style={styles.priceLabel}>PRICE</Text>
-                      <Text style={styles.productPrice}>{formatNaira(product.price_ngn)}</Text>
-                      {qtyInCart > 0 && (
-                        <View style={styles.inCartBadge}>
-                          <Text style={styles.inCartBadgeText}>{qtyInCart} in cart</Text>
-                        </View>
-                      )}
-                    </View>
-
-                    <TouchableOpacity
-                      style={[
-                        styles.addButton,
-                        isJustAdded && styles.addedButton,
-                        isAdding && styles.addingButton,
-                      ]}
-                      activeOpacity={0.85}
-                      onPress={() => handleAddToCart(product)}
-                      disabled={isAdding}
-                    >
-                      {isAdding ? (
-                        <ActivityIndicator size="small" color="#ffffff" />
-                      ) : isJustAdded ? (
-                        <Text style={styles.addedButtonText}>✓ Added</Text>
-                      ) : (
-                        <Text style={styles.addButtonText}>+ Add to Cart</Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
+        <Text style={styles.catalogSubtitle}>
+          Pure, sterilized, sealed in food-grade packs
+        </Text>
       </View>
 
-      {/* Auth Prompt Modal */}
+      {loading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={Colors.primaryDark} />
+          <Text style={styles.loadingText}>Fetching available water inventory...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorTitle}>Could not load catalog</Text>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchProducts}>
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : products.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No products available right now.</Text>
+        </View>
+      ) : (
+        /* Product Cards matching Web UI */
+        <View style={styles.cardsList}>
+          {products.map((product) => {
+            const isAdding = addingId === product.id;
+            const isJustAdded = recentlyAddedId === product.id;
+            const badge = getProductBadge(product.name);
+            const imageSource = getProductImage(product.name);
+
+            return (
+              <View key={product.id} style={styles.productCard}>
+                {/* Visual Image Container with Pill Badge */}
+                <View style={styles.productImageContainer}>
+                  <Image
+                    source={imageSource}
+                    style={styles.productImage}
+                    resizeMode="contain"
+                  />
+                  {badge && (
+                    <View style={styles.productBadge}>
+                      <Text style={styles.productBadgeText}>{badge}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Details */}
+                <Text style={styles.productName}>{product.name}</Text>
+                <Text style={styles.productDescription}>{product.description}</Text>
+
+                <View style={styles.cardDivider} />
+
+                {/* Bottom Price & Add to Cart action */}
+                <View style={styles.cardBottom}>
+                  <View style={styles.priceContainer}>
+                    <Text style={styles.priceLabel}>PRICE</Text>
+                    <Text style={styles.productPrice}>{formatNaira(product.price_ngn)}</Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.addBtn,
+                      isJustAdded && styles.addBtnSuccess,
+                    ]}
+                    activeOpacity={0.85}
+                    onPress={() => handleAddToCart(product)}
+                    disabled={isAdding}
+                  >
+                    {isAdding ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : isJustAdded ? (
+                      <Text style={styles.addBtnText}>✓ Added</Text>
+                    ) : (
+                      <View style={styles.addBtnContent}>
+                        <Text style={styles.addBtnCartIcon}>🛒</Text>
+                        <Text style={styles.addBtnText}>Add to cart</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Auth Modal */}
       <Modal
         visible={showAuthModal}
         transparent
@@ -301,78 +343,135 @@ export default function ProductsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.background, // #cae8ff sky water background
   },
   content: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 48,
     gap: 16,
   },
-  heroCard: {
-    backgroundColor: Colors.surface,
+  heroPanel: {
+    backgroundColor: 'rgba(255, 255, 255, 0.78)',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.95)',
     padding: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadows.card,
+    ...Shadows.glassPanel,
   },
-  heroBadgeRow: {
+  hubBadge: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  heroBadge: {
-    backgroundColor: Colors.primaryLight,
-    paddingHorizontal: 10,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(60, 249, 220, 0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 107, 92, 0.25)',
+    paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Colors.primaryBorder,
+    gap: 5,
+    marginBottom: 14,
   },
-  heroBadgeText: {
-    color: Colors.primaryDark,
+  hubBadgeIcon: {
+    fontSize: 12,
+  },
+  hubBadgeText: {
     fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  heroLocation: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textMuted,
+    color: '#007061',
+    letterSpacing: 0.2,
   },
   heroTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
-    color: Colors.text,
-    lineHeight: 28,
+    color: '#001d35',
+    lineHeight: 31,
     letterSpacing: -0.4,
-    marginBottom: 8,
+    marginBottom: 10,
+  },
+  heroTitleHighlight: {
+    color: '#0061a5',
   },
   heroSubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 16,
+    fontSize: 13,
+    color: '#3f4753',
+    lineHeight: 19,
+    marginBottom: 18,
   },
-  trustBadgesRow: {
+  heroButtonsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingTop: 12,
+    gap: 10,
+    marginBottom: 18,
+  },
+  heroPrimaryBtn: {
+    flex: 1,
+    backgroundColor: '#0099ff',
+    paddingVertical: 13,
+    borderRadius: 24,
+    alignItems: 'center',
+    ...Shadows.buttonGloss,
+  },
+  heroPrimaryBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  heroSecondaryBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.95)',
+    paddingVertical: 13,
+    borderRadius: 24,
+    alignItems: 'center',
+  },
+  heroSecondaryBtnText: {
+    color: '#0061a5',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  stepsContainer: {
     borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
+    borderTopColor: 'rgba(255, 255, 255, 0.75)',
+    paddingTop: 16,
+    gap: 10,
   },
-  trustPill: {
-    backgroundColor: Colors.surfaceSubtle,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+  stepCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.65)',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.85)',
   },
-  trustPillText: {
+  stepNumberBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#0099ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.buttonGloss,
+  },
+  stepNumberText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  stepInfo: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#001d35',
+    marginBottom: 2,
+  },
+  stepDesc: {
     fontSize: 11,
-    fontWeight: '700',
-    color: Colors.textSecondary,
+    color: '#3f4753',
+    lineHeight: 15,
   },
   feedbackBanner: {
     backgroundColor: Colors.successLight,
@@ -387,87 +486,91 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 14,
   },
-  catalogSection: {
-    gap: 14,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  catalogHeader: {
     paddingHorizontal: 2,
+    marginTop: 6,
+    gap: 2,
   },
-  sectionTitle: {
-    fontSize: 19,
+  catalogEyebrow: {
+    fontSize: 11,
     fontWeight: '800',
-    color: Colors.text,
+    color: '#0061a5',
+    letterSpacing: 0.8,
+  },
+  catalogTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#001d35',
     letterSpacing: -0.3,
   },
-  sectionSubtitle: {
+  catalogSubtitle: {
     fontSize: 12,
-    color: Colors.textMuted,
+    color: '#3f4753',
     marginTop: 2,
   },
-  refreshButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: Colors.surfaceSubtle,
-  },
-  refreshText: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontWeight: '700',
-  },
   cardsList: {
-    gap: 14,
+    gap: 18,
+    marginTop: 6,
   },
   productCard: {
-    backgroundColor: Colors.surface,
-    padding: 18,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadows.card,
-  },
-  cardTop: {
-    flexDirection: 'row',
-    gap: 14,
-    alignItems: 'flex-start',
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
     borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.95)',
+    padding: 18,
+    ...Shadows.glassPanel,
+  },
+  productImageContainer: {
+    width: '100%',
+    height: 180,
+    borderRadius: 18,
+    backgroundColor: '#eff8ff',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    marginBottom: 14,
   },
-  productIcon: {
-    fontSize: 24,
+  productImage: {
+    width: '90%',
+    height: '90%',
   },
-  titleArea: {
-    flex: 1,
-    gap: 4,
+  productBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(60, 249, 220, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 107, 92, 0.25)',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 20,
+    zIndex: 10,
   },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  productBadgeText: {
+    color: '#007061',
+    fontSize: 11,
+    fontWeight: '800',
   },
   productName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text,
-    lineHeight: 22,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#001d35',
+    marginBottom: 4,
+    letterSpacing: -0.2,
   },
   productDescription: {
     fontSize: 13,
-    color: Colors.textMuted,
+    color: '#3f4753',
     lineHeight: 18,
+    marginBottom: 14,
   },
   cardDivider: {
     height: 1,
-    backgroundColor: Colors.borderLight,
-    marginVertical: 14,
+    backgroundColor: 'rgba(186, 230, 253, 0.6)',
+    marginBottom: 12,
   },
   cardBottom: {
     flexDirection: 'row',
@@ -480,54 +583,40 @@ const styles = StyleSheet.create({
   priceLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: Colors.textMuted,
+    color: '#94a3b8',
     letterSpacing: 0.5,
   },
   productPrice: {
-    fontSize: 19,
+    fontSize: 21,
     fontWeight: '800',
-    color: Colors.text,
+    color: '#001d35',
     letterSpacing: -0.3,
   },
-  inCartBadge: {
-    backgroundColor: Colors.primaryLight,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginTop: 2,
-  },
-  inCartBadgeText: {
-    color: Colors.primaryDark,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  addButton: {
-    backgroundColor: Colors.primary,
+  addBtn: {
+    backgroundColor: '#0099ff',
     paddingVertical: 10,
     paddingHorizontal: 18,
-    borderRadius: 12,
-    minWidth: 125,
+    borderRadius: 24,
+    minWidth: 130,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.button,
+    ...Shadows.buttonGloss,
   },
-  addingButton: {
-    opacity: 0.8,
+  addBtnSuccess: {
+    backgroundColor: '#10b981',
   },
-  addedButton: {
-    backgroundColor: Colors.success,
-    shadowColor: Colors.success,
+  addBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  addButtonText: {
+  addBtnCartIcon: {
+    fontSize: 13,
+  },
+  addBtnText: {
     color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  addedButtonText: {
-    color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 14,
+    fontWeight: '800',
+    fontSize: 13,
   },
   centerContainer: {
     paddingVertical: 48,
@@ -536,8 +625,8 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: Colors.textMuted,
-    fontWeight: '500',
+    color: '#3f4753',
+    fontWeight: '600',
   },
   errorContainer: {
     padding: 24,
@@ -562,10 +651,10 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 8,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#0099ff',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   retryButtonText: {
     color: '#ffffff',
@@ -577,31 +666,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    color: Colors.textMuted,
+    color: '#3f4753',
     fontSize: 14,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backgroundColor: 'rgba(0, 29, 53, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   modalContent: {
-    backgroundColor: Colors.surface,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 24,
     padding: 26,
     width: '100%',
     maxWidth: 340,
     alignItems: 'center',
     gap: 14,
-    ...Shadows.cardHover,
+    ...Shadows.glassPanel,
   },
   modalIconCircle: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: '#e1f3ff',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
@@ -612,35 +701,35 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: Colors.text,
+    color: '#001d35',
     letterSpacing: -0.3,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: '#3f4753',
     textAlign: 'center',
     lineHeight: 20,
   },
   modalSignInButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: '#0099ff',
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 24,
     width: '100%',
     alignItems: 'center',
     marginTop: 6,
-    ...Shadows.button,
+    ...Shadows.buttonGloss,
   },
   modalSignInText: {
     color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 15,
+    fontWeight: '800',
+    fontSize: 14,
   },
   modalCancelButton: {
     paddingVertical: 8,
   },
   modalCancelText: {
-    color: Colors.textMuted,
+    color: '#64748b',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 13,
   },
 });

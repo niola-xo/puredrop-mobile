@@ -1,9 +1,38 @@
 import React from 'react';
-import { Tabs } from 'expo-router';
-import { Text, View, StyleSheet } from 'react-native';
+import { Tabs, useRouter } from 'expo-router';
+import { Text, View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { CartProvider, useCart } from '@/context/cart';
 import { AuthProvider } from '@/context/auth';
+
+function HeaderBrand() {
+  return (
+    <View style={styles.brandContainer}>
+      <View style={styles.brandIconCircle}>
+        <Text style={styles.brandIconText}>💧</Text>
+      </View>
+      <Text style={styles.brandNamePure}>
+        Pure<Text style={styles.brandNameDrop}>Drop</Text>
+      </Text>
+    </View>
+  );
+}
+
+function HeaderCartButton() {
+  const router = useRouter();
+  const { itemCount } = useCart();
+
+  return (
+    <TouchableOpacity
+      style={styles.headerCartPill}
+      activeOpacity={0.8}
+      onPress={() => router.push('/cart')}
+    >
+      <Text style={styles.headerCartIcon}>🛍️</Text>
+      <Text style={styles.headerCartText}>Cart ({itemCount})</Text>
+    </TouchableOpacity>
+  );
+}
 
 function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
   return (
@@ -20,37 +49,35 @@ function TabLayoutContent() {
     <Tabs
       screenOptions={{
         headerStyle: {
-          backgroundColor: Colors.surface,
+          backgroundColor: 'rgba(255, 255, 255, 0.94)',
           borderBottomWidth: 1,
-          borderBottomColor: Colors.border,
-          elevation: 0,
-          shadowOpacity: 0,
+          borderBottomColor: 'rgba(255, 255, 255, 0.8)',
+          elevation: 2,
+          shadowColor: '#0073cc',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 6,
         },
-        headerTintColor: Colors.primaryDark,
-        headerTitleStyle: {
-          fontWeight: '800',
-          fontSize: 19,
-          color: Colors.text,
-          letterSpacing: -0.3,
-        },
-        tabBarActiveTintColor: Colors.primary,
+        headerTitle: () => <HeaderBrand />,
+        headerRight: () => <HeaderCartButton />,
+        tabBarActiveTintColor: Colors.primaryDark,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarStyle: {
-          backgroundColor: Colors.surface,
+          backgroundColor: 'rgba(255, 255, 255, 0.94)',
           borderTopWidth: 1,
-          borderTopColor: Colors.border,
-          height: 64,
+          borderTopColor: 'rgba(255, 255, 255, 0.9)',
+          height: 66,
           paddingBottom: 10,
           paddingTop: 8,
           elevation: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.04,
-          shadowRadius: 8,
+          shadowColor: '#0073cc',
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.1,
+          shadowRadius: 10,
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '600',
+          fontWeight: '700',
         },
       }}
     >
@@ -58,7 +85,6 @@ function TabLayoutContent() {
         name="index"
         options={{
           title: 'Products',
-          headerTitle: 'PureDrop 💧',
           tabBarLabel: 'Products',
           tabBarIcon: ({ focused }) => <TabIcon icon="💧" focused={focused} />,
         }}
@@ -67,11 +93,10 @@ function TabLayoutContent() {
         name="cart"
         options={{
           title: 'Cart',
-          headerTitle: 'My Cart',
           tabBarLabel: 'Cart',
           tabBarBadge: itemCount > 0 ? itemCount : undefined,
           tabBarBadgeStyle: {
-            backgroundColor: Colors.primary,
+            backgroundColor: Colors.primaryDark,
             color: '#ffffff',
             fontSize: 11,
             fontWeight: '700',
@@ -83,7 +108,6 @@ function TabLayoutContent() {
         name="account"
         options={{
           title: 'Account',
-          headerTitle: 'Account',
           tabBarLabel: 'Account',
           tabBarIcon: ({ focused }) => <TabIcon icon="👤" focused={focused} />,
         }}
@@ -93,7 +117,6 @@ function TabLayoutContent() {
         options={{
           href: null,
           title: 'Checkout',
-          headerTitle: 'Complete Order',
         }}
       />
       <Tabs.Screen
@@ -123,6 +146,61 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
+  brandContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  brandIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#0099ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0099ff',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  brandIconText: {
+    fontSize: 16,
+  },
+  brandNamePure: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#001d35',
+    letterSpacing: -0.4,
+  },
+  brandNameDrop: {
+    color: '#0061a5',
+  },
+  headerCartPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderWidth: 1.5,
+    borderColor: '#bae6fd',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginRight: 16,
+    shadowColor: '#0073cc',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerCartIcon: {
+    fontSize: 13,
+  },
+  headerCartText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0061a5',
+  },
   tabIconContainer: {
     width: 34,
     height: 34,

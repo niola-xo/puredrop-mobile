@@ -1,17 +1,24 @@
 export const Colors = {
-  primary: '#0284c7', // vibrant ocean blue
-  primaryDark: '#0369a1',
-  primaryLight: '#f0f9ff',
-  primaryBorder: '#bae6fd',
-  primaryAccent: '#38bdf8',
-  background: '#f8fafc', // smooth slate background
+  primary: '#0099ff', // Frutiger glossy blue
+  primaryDark: '#0061a5',
+  primaryDeep: '#004780',
+  primaryLight: '#e1f3ff',
+  primaryBorder: '#9bd7ff',
+  primaryAccent: '#38b6ff',
+  background: '#cae8ff', // Web water sky background
+  backgroundSubtle: '#dcf0ff',
   surface: '#ffffff',
-  surfaceSubtle: '#f1f5f9',
-  text: '#0f172a', // deep navy text
-  textSecondary: '#334155',
+  surfaceGlass: 'rgba(255, 255, 255, 0.82)',
+  surfaceGlassSecondary: 'rgba(255, 255, 255, 0.65)',
+  surfaceSubtle: '#f0f9ff',
+  text: '#001d35', // Pure deep navy text matching web
+  textSecondary: '#3f4753',
   textMuted: '#64748b',
-  border: '#e2e8f0',
-  borderLight: '#f1f5f9',
+  border: 'rgba(255, 255, 255, 0.95)',
+  borderGlass: 'rgba(255, 255, 255, 0.85)',
+  borderSubtle: '#bae6fd',
+  badgeTealBg: '#3cf9dc',
+  badgeTealText: '#007061',
   danger: '#ef4444',
   dangerLight: '#fef2f2',
   dangerBorder: '#fecaca',
@@ -21,25 +28,25 @@ export const Colors = {
 } as const;
 
 export const Shadows = {
-  card: {
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+  glassPanel: {
+    shadowColor: '#0073cc',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 4,
   },
-  cardHover: {
-    shadowColor: '#0f172a',
+  buttonGloss: {
+    shadowColor: '#0099ff',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  card: {
+    shadowColor: '#001d35',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
-    elevation: 4,
-  },
-  button: {
-    shadowColor: '#0284c7',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
     elevation: 3,
   },
 } as const;

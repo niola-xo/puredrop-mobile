@@ -7,12 +7,14 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors, Shadows } from '@/constants/theme';
 import { useCart } from '@/context/cart';
 import { useAuth } from '@/context/auth';
 import { supabase } from '@/lib/supabase';
+import { getProductImage } from '@/lib/products';
 import {
   WEEKDAYS,
   getWeekdayName,
@@ -45,7 +47,7 @@ export default function CheckoutScreen() {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [landmark, setLandmark] = useState('');
-  const [purchaseType, setPurchaseType] = useState<'one_time' | 'subscription'>('one_time');
+  const [orderType, setOrderType] = useState<'one_time' | 'subscription'>('one_time');
 
   // Dates
   const availableDates = useMemo(() => getNext30DeliveryDates(), []);
@@ -55,7 +57,7 @@ export default function CheckoutScreen() {
 
   // Subscription Details
   const [frequency, setFrequency] = useState<'weekly' | 'monthly'>('weekly');
-  const [selectedWeekday, setSelectedWeekday] = useState<number>(1); // Default Monday (1)
+  const [selectedWeekday, setSelectedWeekday] = useState<number>(1); // Monday
 
   // Submitting / UI states
   const [submitting, setSubmitting] = useState(false);
@@ -74,37 +76,35 @@ export default function CheckoutScreen() {
   const handlePlaceOrder = async () => {
     setErrorMessage(null);
 
-    // 1. Validation
     if (!user) {
       setErrorMessage('Please sign in with Google to complete your order.');
       return;
     }
 
     if (!customerName.trim()) {
-      setErrorMessage('Please enter your full name.');
+      setErrorMessage('Full name is required.');
       return;
     }
 
     const digitsOnly = phone.replace(/\D/g, '');
     if (digitsOnly.length < 10) {
-      setErrorMessage('Please enter a valid phone number with at least 10 digits.');
+      setErrorMessage('Phone number must have at least 10 digits.');
       return;
     }
 
     if (!address.trim()) {
-      setErrorMessage('Please enter your delivery address.');
+      setErrorMessage('Delivery address is required.');
       return;
     }
 
     if (itemCount === 0) {
-      setErrorMessage('Your cart is empty. Please add items before checking out.');
+      setErrorMessage('Your cart is empty. Add water products before checkout.');
       return;
     }
 
     setSubmitting(true);
 
     try {
-      // 2. Obtain fresh Supabase JWT
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
 
@@ -112,7 +112,6 @@ export default function CheckoutScreen() {
         throw new Error('Your session has expired. Please sign in again.');
       }
 
-      // 3. Prepare payload for POST /api/checkout
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://puredrop-swart.vercel.app';
       const endpoint = `${apiUrl.replace(/\/$/, '')}/api/checkout`;
 
@@ -121,10 +120,10 @@ export default function CheckoutScreen() {
         phone: phone.trim(),
         address: address.trim(),
         landmark: landmark.trim() || undefined,
-        purchase_type: purchaseType,
-        delivery_date: purchaseType === 'one_time' ? selectedDate : undefined,
-        frequency: purchaseType === 'subscription' ? frequency : undefined,
-        delivery_weekday: purchaseType === 'subscription' ? selectedWeekday : undefined,
+        purchase_type: orderType,
+        delivery_date: orderType === 'one_time' ? selectedDate : undefined,
+        frequency: orderType === 'subscription' ? frequency : undefined,
+        delivery_weekday: orderType === 'subscription' ? selectedWeekday : undefined,
       };
 
       const response = await fetch(endpoint, {
@@ -142,14 +141,13 @@ export default function CheckoutScreen() {
         throw new Error(data.error || `Checkout failed (${response.status})`);
       }
 
-      // 4. Success: capture order details and refresh cart
       const confirmedOrder: OrderConfirmation = {
         orderId: data.order_id || 'ORDER',
         emailStatus: data.email_status || 'pending',
-        orderType: purchaseType,
+        orderType,
         customerName: customerName.trim(),
         address: address.trim(),
-        deliveryDate: purchaseType === 'one_time' ? selectedDate : firstSubscriptionDate,
+        deliveryDate: orderType === 'one_time' ? selectedDate : firstSubscriptionDate,
         frequency,
         weekdayName: getWeekdayName(selectedWeekday),
         totalNgn: totalAmount,
@@ -164,29 +162,28 @@ export default function CheckoutScreen() {
     }
   };
 
-  // If user is not authenticated
   if (!user) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <View style={styles.stateCard}>
+        <View style={styles.glassCard}>
           <Text style={styles.stateIcon}>🔒</Text>
-          <Text style={styles.stateTitle}>Sign in to Complete Checkout</Text>
-          <Text style={styles.stateSubtitle}>
+          <Text style={styles.cardTitle}>Sign in to Complete Checkout</Text>
+          <Text style={styles.cardSubtitle}>
             Please sign in with Google to securely place your order and track delivery.
           </Text>
           <TouchableOpacity
-            style={styles.primaryBtn}
+            style={styles.primaryGlossBtn}
             activeOpacity={0.85}
             onPress={() => signInWithGoogle()}
           >
-            <Text style={styles.primaryBtnText}>Continue with Google</Text>
+            <Text style={styles.primaryGlossBtnText}>Continue with Google</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
     );
   }
 
-  // Confirmation view after order is placed
+  // Confirmation view matching Web order receipt
   if (confirmation) {
     const isSent = confirmation.emailStatus === 'sent';
     const emailNotice = isSent
@@ -195,13 +192,13 @@ export default function CheckoutScreen() {
 
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <View style={styles.confirmationCard}>
-          <View style={styles.successIconCircle}>
-            <Text style={styles.successIconText}>🎉</Text>
+        <View style={styles.glassCard}>
+          <View style={styles.successCircle}>
+            <Text style={styles.successIcon}>✓</Text>
           </View>
 
-          <Text style={styles.confTitle}>
-            {confirmation.orderType === 'subscription' ? 'Subscription Started!' : 'Order Placed!'}
+          <Text style={styles.cardTitle}>
+            {confirmation.orderType === 'subscription' ? 'Subscription Started!' : 'Order Confirmed!'}
           </Text>
 
           <View style={styles.refBadge}>
@@ -210,12 +207,11 @@ export default function CheckoutScreen() {
             </Text>
           </View>
 
-          <Text style={styles.confSubtitle}>
+          <Text style={styles.cardSubtitle}>
             Thank you, {confirmation.customerName}. Your pure water delivery has been scheduled.
           </Text>
 
-          {/* Details Box */}
-          <View style={styles.confDetailsBox}>
+          <View style={styles.confDetails}>
             <View style={styles.confRow}>
               <Text style={styles.confLabel}>Type</Text>
               <Text style={styles.confValue}>
@@ -250,7 +246,7 @@ export default function CheckoutScreen() {
             )}
 
             <View style={styles.confRow}>
-              <Text style={styles.confLabel}>Delivery Address</Text>
+              <Text style={styles.confLabel}>Address</Text>
               <Text style={styles.confValue} numberOfLines={2}>
                 {confirmation.address}
               </Text>
@@ -262,7 +258,6 @@ export default function CheckoutScreen() {
             </View>
           </View>
 
-          {/* Mailgun Email Status Notice */}
           <View style={[styles.emailNoticeBox, isSent ? styles.emailNoticeSuccess : styles.emailNoticeWarning]}>
             <Text style={styles.emailNoticeIcon}>{isSent ? '📧' : 'ℹ️'}</Text>
             <Text style={[styles.emailNoticeText, isSent ? styles.emailNoticeTextSuccess : styles.emailNoticeTextWarning]}>
@@ -271,11 +266,11 @@ export default function CheckoutScreen() {
           </View>
 
           <TouchableOpacity
-            style={styles.primaryBtn}
+            style={styles.primaryGlossBtn}
             activeOpacity={0.85}
             onPress={() => router.push('/')}
           >
-            <Text style={styles.primaryBtnText}>Back to Products</Text>
+            <Text style={styles.primaryGlossBtnText}>Back to Products</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -286,18 +281,18 @@ export default function CheckoutScreen() {
   if (itemCount === 0) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <View style={styles.stateCard}>
+        <View style={styles.glassCard}>
           <Text style={styles.stateIcon}>🛒</Text>
-          <Text style={styles.stateTitle}>Your Cart is Empty</Text>
-          <Text style={styles.stateSubtitle}>
-            Add pure water refills or packs to your cart before proceeding to checkout.
+          <Text style={styles.cardTitle}>Cart is empty</Text>
+          <Text style={styles.cardSubtitle}>
+            You need at least one water product in your cart to proceed with checkout.
           </Text>
           <TouchableOpacity
-            style={styles.primaryBtn}
+            style={styles.primaryGlossBtn}
             activeOpacity={0.85}
             onPress={() => router.push('/')}
           >
-            <Text style={styles.primaryBtnText}>Browse Products</Text>
+            <Text style={styles.primaryGlossBtnText}>Browse Products</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -306,16 +301,14 @@ export default function CheckoutScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Top Navigation */}
-      <View style={styles.topNavRow}>
+      {/* Top back link */}
+      <View style={styles.topBar}>
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => router.push('/cart')}
-          activeOpacity={0.7}
         >
           <Text style={styles.backBtnText}>← Back to Cart</Text>
         </TouchableOpacity>
-        <Text style={styles.stepIndicator}>Step 2 of 2</Text>
       </View>
 
       {errorMessage && (
@@ -324,114 +317,112 @@ export default function CheckoutScreen() {
         </View>
       )}
 
-      {/* Step 1: Contact & Delivery Location */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionNumber}>1</Text>
-          <Text style={styles.sectionTitle}>Delivery Information</Text>
+      {/* Delivery Details Card */}
+      <View style={styles.glassPanel}>
+        <View style={styles.panelHeader}>
+          <Text style={styles.panelTitle}>Delivery Details</Text>
+          <Text style={styles.panelSubtitle}>
+            Ordering as <Text style={styles.userEmailText}>{user.email}</Text>
+          </Text>
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.inputLabel}>Full Name *</Text>
+          <Text style={styles.fieldLabel}>FULL NAME *</Text>
           <TextInput
-            style={styles.input}
-            placeholder="e.g. Niola Bakare"
-            placeholderTextColor={Colors.textMuted}
+            style={styles.textInput}
+            placeholder="e.g. Tunde Adebayo"
+            placeholderTextColor="#94a3b8"
             value={customerName}
             onChangeText={setCustomerName}
           />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.inputLabel}>Phone Number *</Text>
+          <Text style={styles.fieldLabel}>PHONE NUMBER *</Text>
           <TextInput
-            style={styles.input}
-            placeholder="e.g. 08012345678 (min 10 digits)"
-            placeholderTextColor={Colors.textMuted}
+            style={styles.textInput}
+            placeholder="e.g. 08012345678"
+            placeholderTextColor="#94a3b8"
             keyboardType="phone-pad"
             value={phone}
             onChangeText={setPhone}
           />
-          <Text style={styles.inputHint}>Our driver will call this number upon arrival</Text>
+          <Text style={styles.hintText}>Must be at least 10 digits for driver contact.</Text>
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.inputLabel}>Delivery Address *</Text>
+          <Text style={styles.fieldLabel}>DELIVERY ADDRESS *</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Street address, building name, flat number (Akoka, Yaba, etc.)"
-            placeholderTextColor={Colors.textMuted}
+            style={[styles.textInput, styles.textArea]}
+            placeholder="e.g. 14 University Road, Akoka, Lagos"
+            placeholderTextColor="#94a3b8"
             multiline
-            numberOfLines={3}
+            numberOfLines={2}
             value={address}
             onChangeText={setAddress}
           />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.inputLabel}>Landmark or Area (Optional)</Text>
+          <Text style={styles.fieldLabel}>LANDMARK OR AREA (OPTIONAL)</Text>
           <TextInput
-            style={styles.input}
-            placeholder="e.g. Near UNILAG gate, opposite total station"
-            placeholderTextColor={Colors.textMuted}
+            style={styles.textInput}
+            placeholder="e.g. Near UNILAG 2nd Gate, behind St. Finbarrs"
+            placeholderTextColor="#94a3b8"
             value={landmark}
             onChangeText={setLandmark}
           />
         </View>
       </View>
 
-      {/* Step 2: Order Type & Schedule */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionNumber}>2</Text>
-          <Text style={styles.sectionTitle}>Delivery Schedule</Text>
+      {/* Purchase Type & Schedule Card */}
+      <View style={styles.glassPanel}>
+        <View style={styles.panelHeader}>
+          <Text style={styles.panelTitle}>Purchase Type & Schedule</Text>
+          <Text style={styles.panelSubtitle}>Choose between one-time batch or recurring supply</Text>
         </View>
 
-        {/* Purchase Type Selector */}
-        <View style={styles.tabToggle}>
+        {/* Toggle Pills matching Web */}
+        <View style={styles.typeToggle}>
           <TouchableOpacity
             style={[
-              styles.tabBtn,
-              purchaseType === 'one_time' && styles.tabBtnActive,
+              styles.typePill,
+              orderType === 'one_time' && styles.typePillActive,
             ]}
-            onPress={() => setPurchaseType('one_time')}
-            activeOpacity={0.8}
+            onPress={() => setOrderType('one_time')}
           >
             <Text
               style={[
-                styles.tabBtnText,
-                purchaseType === 'one_time' && styles.tabBtnTextActive,
+                styles.typePillText,
+                orderType === 'one_time' && styles.typePillTextActive,
               ]}
             >
-              One-Time Order
+              One-time order
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[
-              styles.tabBtn,
-              purchaseType === 'subscription' && styles.tabBtnActive,
+              styles.typePill,
+              orderType === 'subscription' && styles.typePillActive,
             ]}
-            onPress={() => setPurchaseType('subscription')}
-            activeOpacity={0.8}
+            onPress={() => setOrderType('subscription')}
           >
             <Text
               style={[
-                styles.tabBtnText,
-                purchaseType === 'subscription' && styles.tabBtnTextActive,
+                styles.typePillText,
+                orderType === 'subscription' && styles.typePillTextActive,
               ]}
             >
-              Subscribe & Save
+              Subscribe
             </Text>
           </TouchableOpacity>
         </View>
 
-        {purchaseType === 'one_time' ? (
-          /* One-Time Date Picker */
-          <View style={styles.datePickerSection}>
-            <Text style={styles.subSectionTitle}>Select Delivery Date (Next 30 Days)</Text>
-            <Text style={styles.subSectionHint}>Earliest delivery is tomorrow (Lagos time)</Text>
-
+        {orderType === 'one_time' ? (
+          /* One-time Date Selection */
+          <View style={styles.scheduleSection}>
+            <Text style={styles.fieldLabel}>PREFERRED DELIVERY DATE (LAGOS TIME) *</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -449,33 +440,17 @@ export default function CheckoutScreen() {
                     key={item.iso}
                     style={[
                       styles.datePill,
-                      isSelected && styles.datePillSelected,
+                      isSelected && styles.datePillActive,
                     ]}
-                    activeOpacity={0.8}
                     onPress={() => setSelectedDate(item.iso)}
                   >
-                    <Text
-                      style={[
-                        styles.datePillDay,
-                        isSelected && styles.datePillDaySelected,
-                      ]}
-                    >
+                    <Text style={[styles.datePillDay, isSelected && styles.textWhite]}>
                       {dayName}
                     </Text>
-                    <Text
-                      style={[
-                        styles.datePillNumber,
-                        isSelected && styles.datePillNumberSelected,
-                      ]}
-                    >
+                    <Text style={[styles.datePillNum, isSelected && styles.textWhite]}>
                       {d}
                     </Text>
-                    <Text
-                      style={[
-                        styles.datePillMonth,
-                        isSelected && styles.datePillMonthSelected,
-                      ]}
-                    >
+                    <Text style={[styles.datePillMonth, isSelected && styles.textWhite]}>
                       {monthName}
                     </Text>
                   </TouchableOpacity>
@@ -483,54 +458,46 @@ export default function CheckoutScreen() {
               })}
             </ScrollView>
 
-            <View style={styles.selectedDateBadge}>
-              <Text style={styles.selectedDateBadgeText}>
-                📅 Scheduled: {formatReadableDate(selectedDate)}
+            <View style={styles.scheduledNotice}>
+              <Text style={styles.scheduledNoticeText}>
+                📅 Selected: {formatReadableDate(selectedDate)}
               </Text>
             </View>
           </View>
         ) : (
-          /* Subscription Configuration */
-          <View style={styles.subConfigSection}>
-            <Text style={styles.subSectionTitle}>Delivery Frequency</Text>
-            <View style={styles.frequencyRow}>
+          /* Subscription Frequency & Day Selection */
+          <View style={styles.scheduleSection}>
+            <Text style={styles.fieldLabel}>DELIVERY FREQUENCY *</Text>
+            <View style={styles.freqRow}>
               <TouchableOpacity
                 style={[
-                  styles.freqPill,
-                  frequency === 'weekly' && styles.freqPillActive,
+                  styles.freqCard,
+                  frequency === 'weekly' && styles.freqCardActive,
                 ]}
                 onPress={() => setFrequency('weekly')}
               >
-                <Text
-                  style={[
-                    styles.freqPillText,
-                    frequency === 'weekly' && styles.freqPillTextActive,
-                  ]}
-                >
+                <Text style={[styles.freqCardTitle, frequency === 'weekly' && styles.textPrimary]}>
                   Weekly
                 </Text>
+                <Text style={styles.freqCardDesc}>Every 7 days</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
-                  styles.freqPill,
-                  frequency === 'monthly' && styles.freqPillActive,
+                  styles.freqCard,
+                  frequency === 'monthly' && styles.freqCardActive,
                 ]}
                 onPress={() => setFrequency('monthly')}
               >
-                <Text
-                  style={[
-                    styles.freqPillText,
-                    frequency === 'monthly' && styles.freqPillTextActive,
-                  ]}
-                >
+                <Text style={[styles.freqCardTitle, frequency === 'monthly' && styles.textPrimary]}>
                   Monthly
                 </Text>
+                <Text style={styles.freqCardDesc}>Every 4 weeks</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={[styles.subSectionTitle, { marginTop: 14 }]}>Preferred Weekday</Text>
-            <View style={styles.weekdayRow}>
+            <Text style={[styles.fieldLabel, { marginTop: 12 }]}>PREFERRED DELIVERY DAY *</Text>
+            <View style={styles.weekdaysRow}>
               {WEEKDAYS.map((wd) => {
                 const isSelected = selectedWeekday === wd.value;
                 return (
@@ -538,16 +505,11 @@ export default function CheckoutScreen() {
                     key={wd.value}
                     style={[
                       styles.weekdayBtn,
-                      isSelected && styles.weekdayBtnSelected,
+                      isSelected && styles.weekdayBtnActive,
                     ]}
                     onPress={() => setSelectedWeekday(wd.value)}
                   >
-                    <Text
-                      style={[
-                        styles.weekdayBtnText,
-                        isSelected && styles.weekdayBtnTextSelected,
-                      ]}
-                    >
+                    <Text style={[styles.weekdayBtnText, isSelected && styles.textWhite]}>
                       {wd.label.slice(0, 3)}
                     </Text>
                   </TouchableOpacity>
@@ -555,62 +517,71 @@ export default function CheckoutScreen() {
               })}
             </View>
 
-            {/* Computed First Delivery Notice */}
-            <View style={styles.computedFirstDateBox}>
-              <Text style={styles.computedFirstDateTitle}>
-                📅 First Scheduled Delivery
+            <View style={styles.calcDateBox}>
+              <Text style={styles.calcDateEyebrow}>CALCULATED FIRST DELIVERY</Text>
+              <Text style={styles.calcDateValue}>
+                {formatReadableDate(firstSubscriptionDate)}
               </Text>
-              <Text style={styles.computedFirstDateValue}>
-                {formatReadableDate(firstSubscriptionDate)} ({getWeekdayName(selectedWeekday)})
-              </Text>
-              <Text style={styles.computedFirstDateHint}>
-                Repeats {frequency === 'weekly' ? 'every week' : 'every 4 weeks'} on {getWeekdayName(selectedWeekday)}. You can pause or cancel anytime.
+              <Text style={styles.calcDateDesc}>
+                First delivery is scheduled for the first occurrence of your chosen weekday at least 1 day after today (Lagos time).
               </Text>
             </View>
           </View>
         )}
       </View>
 
-      {/* Step 3: Order Review & Demo Payment */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionNumber}>3</Text>
-          <Text style={styles.sectionTitle}>Order Review & Payment</Text>
+      {/* Order Summary & Demo Payment */}
+      <View style={styles.glassPanel}>
+        <View style={styles.panelHeader}>
+          <Text style={styles.panelTitle}>
+            {orderType === 'subscription' ? 'Subscription Summary' : 'Order Summary'}
+          </Text>
         </View>
 
-        {/* Item Summary */}
-        <View style={styles.itemsSummary}>
-          {items.map((i) => (
-            <View key={i.id} style={styles.summaryItemRow}>
-              <Text style={styles.summaryItemName}>
-                {i.quantity}x {i.product?.name || 'Water'}
-              </Text>
-              <Text style={styles.summaryItemPrice}>
-                {formatNaira((i.product?.price_ngn || 0) * i.quantity)}
-              </Text>
-            </View>
-          ))}
-          <View style={styles.summaryDivider} />
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>{formatNaira(totalAmount)}</Text>
-          </View>
+        {/* Item Rows with Thumbnails matching Web */}
+        <View style={styles.summaryList}>
+          {items.map((i) => {
+            const imageSource = getProductImage(i.product?.name || '');
+            return (
+              <View key={i.id} style={styles.summaryItem}>
+                <View style={styles.summaryThumb}>
+                  <Image source={imageSource} style={styles.summaryImg} resizeMode="contain" />
+                </View>
+                <View style={styles.summaryItemInfo}>
+                  <Text style={styles.summaryItemTitle}>{i.product?.name || 'Water'}</Text>
+                  <Text style={styles.summaryItemSub}>
+                    {i.quantity} × {formatNaira(i.product?.price_ngn || 0)}
+                  </Text>
+                </View>
+                <Text style={styles.summaryLineTotal}>
+                  {formatNaira((i.product?.price_ngn || 0) * i.quantity)}
+                </Text>
+              </View>
+            );
+          })}
         </View>
 
-        {/* Demo Mode Notice (AC4.6) */}
-        <View style={styles.demoNoticeCard}>
-          <View style={styles.demoHeader}>
-            <Text style={styles.demoIcon}>🛡️</Text>
-            <Text style={styles.demoTitle}>Demo Mode: No Real Payment Taken</Text>
+        <View style={styles.totalRow}>
+          <Text style={styles.totalLabel}>
+            {orderType === 'subscription' ? 'Per Delivery (NGN)' : 'Total (NGN)'}
+          </Text>
+          <Text style={styles.totalValue}>{formatNaira(totalAmount)}</Text>
+        </View>
+
+        {/* Demo Mode Notice matching Web */}
+        <View style={styles.demoBox}>
+          <View style={styles.demoBadge}>
+            <View style={styles.demoGreenDot} />
+            <Text style={styles.demoBadgeText}>Demo mode: no real payment is taken</Text>
           </View>
-          <Text style={styles.demoText}>
-            This application is for demonstration and evaluation. No debit card or banking credentials are required. Clicking below records your order securely in the database.
+          <Text style={styles.demoDesc}>
+            This is a test environment. No card number, expiration date, or CVV is required. Clicking the button below will record your order in Supabase.
           </Text>
         </View>
 
         {/* Action Button */}
         <TouchableOpacity
-          style={[styles.primaryBtn, submitting && styles.btnDisabled]}
+          style={[styles.primaryGlossBtn, submitting && styles.btnDisabled]}
           activeOpacity={0.85}
           onPress={handlePlaceOrder}
           disabled={submitting}
@@ -618,8 +589,8 @@ export default function CheckoutScreen() {
           {submitting ? (
             <ActivityIndicator size="small" color="#ffffff" />
           ) : (
-            <Text style={styles.primaryBtnText}>
-              {purchaseType === 'subscription' ? 'Start Subscription' : 'Place Order'} ({formatNaira(totalAmount)})
+            <Text style={styles.primaryGlossBtnText}>
+              {orderType === 'subscription' ? 'Start subscription' : 'Place order'}
             </Text>
           )}
         </TouchableOpacity>
@@ -631,147 +602,123 @@ export default function CheckoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.background, // #cae8ff sky water background
   },
   content: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 48,
     gap: 16,
   },
-  topNavRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 2,
-    marginBottom: 4,
+  topBar: {
+    marginBottom: -4,
   },
   backBtn: {
+    alignSelf: 'flex-start',
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: Colors.surfaceSubtle,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
   },
   backBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: Colors.primary,
-  },
-  stepIndicator: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textMuted,
+    color: '#0061a5',
   },
   errorBox: {
     backgroundColor: Colors.dangerLight,
     borderWidth: 1,
     borderColor: Colors.dangerBorder,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 14,
   },
   errorText: {
     color: Colors.danger,
     fontSize: 13,
     fontWeight: '700',
   },
-  sectionCard: {
-    backgroundColor: Colors.surface,
+  glassPanel: {
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.95)',
     padding: 18,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
     gap: 14,
-    ...Shadows.card,
+    ...Shadows.glassPanel,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  panelHeader: {
     borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
+    borderBottomColor: 'rgba(186, 230, 253, 0.6)',
     paddingBottom: 10,
+    gap: 2,
   },
-  sectionNumber: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: Colors.primaryLight,
-    color: Colors.primaryDark,
-    textAlign: 'center',
-    lineHeight: 26,
-    fontSize: 13,
+  panelTitle: {
+    fontSize: 18,
     fontWeight: '800',
+    color: '#001d35',
   },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.2,
+  panelSubtitle: {
+    fontSize: 12,
+    color: '#3f4753',
+  },
+  userEmailText: {
+    color: '#0061a5',
+    fontWeight: '700',
   },
   formGroup: {
-    gap: 6,
+    gap: 5,
   },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.textSecondary,
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#001d35',
+    letterSpacing: 0.5,
   },
-  input: {
-    backgroundColor: Colors.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 12,
+  textInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderWidth: 1.5,
+    borderColor: '#bae6fd',
+    borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    color: Colors.text,
+    color: '#001d35',
   },
   textArea: {
-    height: 74,
+    height: 70,
     textAlignVertical: 'top',
   },
-  inputHint: {
+  hintText: {
     fontSize: 11,
-    color: Colors.textMuted,
+    color: '#94a3b8',
   },
-  tabToggle: {
+  typeToggle: {
     flexDirection: 'row',
-    backgroundColor: Colors.surfaceSubtle,
-    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderRadius: 16,
     padding: 4,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#bae6fd',
   },
-  tabBtn: {
+  typePill: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 11,
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 12,
   },
-  tabBtnActive: {
-    backgroundColor: Colors.surface,
-    ...Shadows.card,
+  typePillActive: {
+    backgroundColor: '#0099ff',
+    ...Shadows.buttonGloss,
   },
-  tabBtnText: {
+  typePillText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: Colors.textMuted,
+    fontWeight: '800',
+    color: '#3f4753',
   },
-  tabBtnTextActive: {
-    color: Colors.primaryDark,
+  typePillTextActive: {
+    color: '#ffffff',
   },
-  datePickerSection: {
-    gap: 10,
-    marginTop: 6,
-  },
-  subSectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  subSectionHint: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    marginTop: -4,
+  scheduleSection: {
+    gap: 8,
   },
   datesScroll: {
     gap: 8,
@@ -780,85 +727,77 @@ const styles = StyleSheet.create({
   datePill: {
     width: 64,
     paddingVertical: 12,
-    borderRadius: 14,
-    backgroundColor: Colors.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderWidth: 1.5,
+    borderColor: '#bae6fd',
     alignItems: 'center',
     gap: 2,
   },
-  datePillSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primaryDark,
-    ...Shadows.button,
+  datePillActive: {
+    backgroundColor: '#0099ff',
+    borderColor: '#0077d9',
+    ...Shadows.buttonGloss,
   },
   datePillDay: {
     fontSize: 11,
     fontWeight: '700',
-    color: Colors.textMuted,
+    color: '#64748b',
   },
-  datePillDaySelected: {
-    color: '#ffffff',
-  },
-  datePillNumber: {
+  datePillNum: {
     fontSize: 18,
     fontWeight: '800',
-    color: Colors.text,
-  },
-  datePillNumberSelected: {
-    color: '#ffffff',
+    color: '#001d35',
   },
   datePillMonth: {
     fontSize: 11,
     fontWeight: '600',
-    color: Colors.textMuted,
+    color: '#64748b',
   },
-  datePillMonthSelected: {
+  textWhite: {
     color: '#ffffff',
   },
-  selectedDateBadge: {
-    backgroundColor: Colors.primaryLight,
+  scheduledNotice: {
+    backgroundColor: '#e1f3ff',
     padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.primaryBorder,
+    borderRadius: 12,
     alignItems: 'center',
   },
-  selectedDateBadgeText: {
-    color: Colors.primaryDark,
+  scheduledNoticeText: {
+    color: '#0061a5',
     fontSize: 13,
     fontWeight: '700',
   },
-  subConfigSection: {
-    gap: 8,
-    marginTop: 6,
-  },
-  frequencyRow: {
+  freqRow: {
     flexDirection: 'row',
     gap: 10,
   },
-  freqPill: {
+  freqCard: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceSubtle,
-    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderWidth: 1.5,
+    borderColor: '#bae6fd',
   },
-  freqPillActive: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primary,
+  freqCardActive: {
+    backgroundColor: '#e1f3ff',
+    borderColor: '#0061a5',
   },
-  freqPillText: {
+  freqCardTitle: {
     fontSize: 14,
-    fontWeight: '700',
-    color: Colors.textSecondary,
+    fontWeight: '800',
+    color: '#001d35',
   },
-  freqPillTextActive: {
-    color: Colors.primaryDark,
+  freqCardDesc: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
   },
-  weekdayRow: {
+  textPrimary: {
+    color: '#0061a5',
+  },
+  weekdaysRow: {
     flexDirection: 'row',
     gap: 6,
     justifyContent: 'space-between',
@@ -866,246 +805,250 @@ const styles = StyleSheet.create({
   weekdayBtn: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: Colors.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderWidth: 1.5,
+    borderColor: '#bae6fd',
     alignItems: 'center',
   },
-  weekdayBtnSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primaryDark,
+  weekdayBtnActive: {
+    backgroundColor: '#0099ff',
+    borderColor: '#0077d9',
   },
   weekdayBtnText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: Colors.textSecondary,
+    fontWeight: '800',
+    color: '#3f4753',
   },
-  weekdayBtnTextSelected: {
-    color: '#ffffff',
-  },
-  computedFirstDateBox: {
-    marginTop: 10,
-    backgroundColor: Colors.primaryLight,
+  calcDateBox: {
+    marginTop: 8,
+    backgroundColor: '#e1f3ff',
     padding: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.primaryBorder,
-    gap: 4,
+    borderColor: '#bae6fd',
+    gap: 3,
   },
-  computedFirstDateTitle: {
-    fontSize: 12,
+  calcDateEyebrow: {
+    fontSize: 10,
     fontWeight: '800',
-    color: Colors.primaryDark,
+    color: '#0061a5',
+    letterSpacing: 0.8,
   },
-  computedFirstDateValue: {
-    fontSize: 15,
+  calcDateValue: {
+    fontSize: 16,
     fontWeight: '800',
-    color: Colors.text,
+    color: '#001d35',
   },
-  computedFirstDateHint: {
+  calcDateDesc: {
     fontSize: 11,
-    color: Colors.primaryDark,
+    color: '#3f4753',
     lineHeight: 16,
   },
-  itemsSummary: {
-    gap: 8,
+  summaryList: {
+    gap: 10,
   },
-  summaryItemRow: {
+  summaryItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
   },
-  summaryItemName: {
+  summaryThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#eff8ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+    overflow: 'hidden',
+  },
+  summaryImg: {
+    width: '90%',
+    height: '90%',
+  },
+  summaryItemInfo: {
+    flex: 1,
+  },
+  summaryItemTitle: {
     fontSize: 13,
-    color: Colors.textSecondary,
-    fontWeight: '600',
+    fontWeight: '800',
+    color: '#001d35',
   },
-  summaryItemPrice: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.text,
+  summaryItemSub: {
+    fontSize: 11,
+    color: '#64748b',
   },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: Colors.borderLight,
-    marginVertical: 4,
+  summaryLineTotal: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#001d35',
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(186, 230, 253, 0.6)',
   },
   totalLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
-    color: Colors.text,
+    color: '#001d35',
   },
   totalValue: {
-    fontSize: 19,
+    fontSize: 22,
     fontWeight: '800',
-    color: Colors.primaryDark,
+    color: '#0061a5',
   },
-  demoNoticeCard: {
-    backgroundColor: '#fffbeb',
-    borderWidth: 1,
-    borderColor: '#fde68a',
-    padding: 14,
-    borderRadius: 14,
-    gap: 4,
+  demoBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: '#7dd3fc',
+    gap: 6,
   },
-  demoHeader: {
+  demoBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    backgroundColor: '#d1fae5',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
   },
-  demoIcon: {
-    fontSize: 16,
+  demoGreenDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10b981',
   },
-  demoTitle: {
-    fontSize: 13,
+  demoBadgeText: {
+    color: '#065f46',
+    fontSize: 11,
     fontWeight: '800',
-    color: '#92400e',
   },
-  demoText: {
-    fontSize: 12,
-    color: '#78350f',
-    lineHeight: 17,
+  demoDesc: {
+    fontSize: 11,
+    color: '#3f4753',
+    lineHeight: 16,
   },
-  primaryBtn: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 15,
-    borderRadius: 14,
+  primaryGlossBtn: {
+    backgroundColor: '#0099ff',
+    paddingVertical: 14,
+    borderRadius: 24,
     alignItems: 'center',
-    ...Shadows.button,
+    ...Shadows.buttonGloss,
   },
-  btnDisabled: {
-    opacity: 0.7,
-  },
-  primaryBtnText: {
+  primaryGlossBtnText: {
     color: '#ffffff',
     fontSize: 15,
     fontWeight: '800',
   },
-  stateCard: {
-    backgroundColor: Colors.surface,
-    padding: 32,
+  btnDisabled: {
+    opacity: 0.6,
+  },
+  glassCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.95)',
+    padding: 28,
     alignItems: 'center',
-    gap: 12,
     marginTop: 40,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadows.card,
+    gap: 12,
+    ...Shadows.glassPanel,
   },
   stateIcon: {
     fontSize: 48,
-    marginBottom: 4,
   },
-  stateTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: Colors.text,
-    textAlign: 'center',
-  },
-  stateSubtitle: {
-    fontSize: 14,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 20,
-    maxWidth: 280,
-  },
-  confirmationCard: {
-    backgroundColor: Colors.surface,
-    padding: 24,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    gap: 12,
-    ...Shadows.card,
-  },
-  successIconCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: Colors.successLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  successIconText: {
-    fontSize: 32,
-  },
-  confTitle: {
+  cardTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.3,
+    color: '#001d35',
+    textAlign: 'center',
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    color: '#3f4753',
+    textAlign: 'center',
+    lineHeight: 19,
+    maxWidth: 290,
+  },
+  successCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#d1fae5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  successIcon: {
+    fontSize: 32,
+    color: '#059669',
+    fontWeight: '800',
   },
   refBadge: {
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: '#e1f3ff',
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingVertical: 5,
+    borderRadius: 12,
   },
   refBadgeText: {
-    color: Colors.primaryDark,
+    color: '#0061a5',
     fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 0.5,
   },
-  confSubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  confDetailsBox: {
+  confDetails: {
     width: '100%',
-    backgroundColor: Colors.surfaceSubtle,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
     borderRadius: 16,
-    padding: 16,
-    gap: 10,
-    marginVertical: 4,
+    padding: 14,
+    gap: 8,
   },
   confRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: 10,
   },
   confLabel: {
-    fontSize: 13,
-    color: Colors.textMuted,
+    fontSize: 12,
+    color: '#64748b',
     fontWeight: '600',
   },
   confValue: {
-    fontSize: 13,
-    color: Colors.text,
+    fontSize: 12,
+    color: '#001d35',
     fontWeight: '700',
     flex: 1,
     textAlign: 'right',
   },
   confTotalValue: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
-    color: Colors.primaryDark,
+    color: '#0061a5',
   },
   emailNoticeBox: {
     width: '100%',
     flexDirection: 'row',
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
     gap: 8,
   },
   emailNoticeSuccess: {
-    backgroundColor: Colors.successLight,
+    backgroundColor: '#d1fae5',
     borderWidth: 1,
-    borderColor: Colors.successBorder,
+    borderColor: '#a7f3d0',
   },
   emailNoticeWarning: {
-    backgroundColor: '#fffbeb',
+    backgroundColor: '#fef3c7',
     borderWidth: 1,
     borderColor: '#fde68a',
   },

@@ -37,7 +37,7 @@ export default function AccountScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={Colors.primaryDark} />
       </View>
     );
   }
@@ -47,8 +47,8 @@ export default function AccountScreen() {
       {user ? (
         /* Signed In State */
         <>
-          <View style={styles.profileCard}>
-            <View style={styles.avatar}>
+          <View style={styles.glassPanel}>
+            <View style={styles.avatarCircle}>
               <Text style={styles.avatarInitial}>
                 {user.email ? user.email.charAt(0).toUpperCase() : '👤'}
               </Text>
@@ -69,39 +69,39 @@ export default function AccountScreen() {
           )}
 
           {/* Delivery Region Card */}
-          <View style={styles.infoCard}>
-            <Text style={styles.infoSectionTitle}>📍 Delivery Coverage</Text>
-            <Text style={styles.infoSectionBody}>
-              PureDrop delivers to Akoka, Yaba, Surulere, and Lagos Mainland. Realtime cart synchronization is active between this mobile app and the web shop.
+          <View style={styles.glassPanel}>
+            <Text style={styles.infoTitle}>📍 Factory Coverage</Text>
+            <Text style={styles.infoBody}>
+              Direct supply to Akoka, Yaba, Surulere, and Lagos Mainland. Realtime cart synchronization is active between your phone and the web shop.
             </Text>
           </View>
 
-          {/* Connected Web Shop */}
-          <View style={styles.infoCard}>
-            <Text style={styles.infoSectionTitle}>🌐 PureDrop Web Shop</Text>
-            <Text style={styles.infoSectionBody}>
-              Manage admin dashboard or subscriptions from the web portal.
+          {/* Web Shop Portal */}
+          <View style={styles.glassPanel}>
+            <Text style={styles.infoTitle}>🌐 PureDrop Web Shop</Text>
+            <Text style={styles.infoBody}>
+              Access admin factory view and desktop subscription management online.
             </Text>
             <TouchableOpacity
-              style={styles.linkButton}
+              style={styles.linkPill}
               activeOpacity={0.7}
               onPress={openWebStore}
             >
-              <Text style={styles.linkButtonText}>Visit Web Shop ↗</Text>
+              <Text style={styles.linkPillText}>Visit Web Shop ↗</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.actionsSection}>
             <TouchableOpacity
-              style={styles.logoutButton}
+              style={styles.logoutBtn}
               activeOpacity={0.8}
               onPress={handleSignOut}
               disabled={actionLoading}
             >
               {actionLoading ? (
-                <ActivityIndicator size="small" color={Colors.danger} />
+                <ActivityIndicator size="small" color="#ef4444" />
               ) : (
-                <Text style={styles.logoutButtonText}>Log Out</Text>
+                <Text style={styles.logoutBtnText}>Log Out</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -109,8 +109,8 @@ export default function AccountScreen() {
       ) : (
         /* Signed Out State */
         <>
-          <View style={styles.profileCard}>
-            <View style={styles.avatar}>
+          <View style={styles.glassPanel}>
+            <View style={styles.avatarCircle}>
               <Text style={styles.avatarInitial}>👤</Text>
             </View>
             <Text style={styles.userName}>Guest User</Text>
@@ -127,7 +127,7 @@ export default function AccountScreen() {
 
           <View style={styles.actionsSection}>
             <TouchableOpacity
-              style={styles.googleButton}
+              style={styles.googleGlossBtn}
               activeOpacity={0.85}
               onPress={handleSignIn}
               disabled={actionLoading}
@@ -135,18 +135,18 @@ export default function AccountScreen() {
               {actionLoading ? (
                 <ActivityIndicator size="small" color="#ffffff" />
               ) : (
-                <Text style={styles.googleButtonText}>Continue with Google</Text>
+                <Text style={styles.googleGlossBtnText}>Continue with Google</Text>
               )}
             </TouchableOpacity>
           </View>
         </>
       )}
 
-      {/* App Version & Details */}
+      {/* Footer Details */}
       <View style={styles.footerInfo}>
         <Text style={styles.footerTitle}>PureDrop Mobile v1.0.0</Text>
         <Text style={styles.footerText}>
-          Connected to shared Supabase project · Lagos Timezone (UTC+1)
+          Connected to shared Supabase project · Africa/Lagos (UTC+1)
         </Text>
       </View>
     </ScrollView>
@@ -156,7 +156,7 @@ export default function AccountScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.background, // #cae8ff sky water background
   },
   centerContainer: {
     flex: 1,
@@ -167,146 +167,140 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 16,
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
-  profileCard: {
-    backgroundColor: Colors.surface,
-    padding: 24,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  glassPanel: {
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.95)',
+    padding: 22,
     alignItems: 'center',
     gap: 8,
-    ...Shadows.card,
+    ...Shadows.glassPanel,
   },
-  avatar: {
+  avatarCircle: {
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: Colors.primaryLight,
-    borderWidth: 2,
-    borderColor: Colors.primaryBorder,
+    backgroundColor: '#0099ff',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
+    ...Shadows.buttonGloss,
   },
   avatarInitial: {
     fontSize: 28,
     fontWeight: '800',
-    color: Colors.primaryDark,
+    color: '#ffffff',
   },
   userName: {
-    fontSize: 19,
+    fontSize: 20,
     fontWeight: '800',
-    color: Colors.text,
+    color: '#001d35',
     letterSpacing: -0.2,
   },
   userEmail: {
-    fontSize: 14,
-    color: Colors.textSecondary,
+    fontSize: 13,
+    color: '#3f4753',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 19,
   },
   verifiedBadge: {
-    backgroundColor: Colors.successLight,
+    backgroundColor: 'rgba(60, 249, 220, 0.35)',
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.successBorder,
+    borderColor: 'rgba(0, 107, 92, 0.25)',
     marginTop: 4,
   },
   verifiedText: {
-    color: '#065f46',
+    color: '#007061',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  infoCard: {
-    backgroundColor: Colors.surface,
-    padding: 18,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 8,
-    ...Shadows.card,
-  },
-  infoSectionTitle: {
+  infoTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: Colors.text,
+    color: '#001d35',
+    alignSelf: 'flex-start',
   },
-  infoSectionBody: {
+  infoBody: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: '#3f4753',
     lineHeight: 19,
+    alignSelf: 'flex-start',
   },
-  linkButton: {
+  linkPill: {
     alignSelf: 'flex-start',
     marginTop: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: Colors.surfaceSubtle,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#e1f3ff',
+    borderWidth: 1,
+    borderColor: '#bae6fd',
   },
-  linkButtonText: {
+  linkPillText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: Colors.primary,
+    fontWeight: '800',
+    color: '#0061a5',
   },
   actionsSection: {
     gap: 12,
   },
-  googleButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 15,
-    borderRadius: 14,
+  googleGlossBtn: {
+    backgroundColor: '#0099ff',
+    paddingVertical: 14,
+    borderRadius: 24,
     alignItems: 'center',
-    ...Shadows.button,
+    ...Shadows.buttonGloss,
   },
-  googleButtonText: {
+  googleGlossBtnText: {
     color: '#ffffff',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  logoutButton: {
-    backgroundColor: Colors.dangerLight,
-    borderWidth: 1,
-    borderColor: Colors.dangerBorder,
-    paddingVertical: 14,
-    borderRadius: 14,
+  logoutBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderWidth: 1.5,
+    borderColor: '#fecaca',
+    paddingVertical: 13,
+    borderRadius: 24,
     alignItems: 'center',
   },
-  logoutButtonText: {
-    color: Colors.danger,
-    fontSize: 15,
-    fontWeight: '700',
+  logoutBtnText: {
+    color: '#ef4444',
+    fontSize: 14,
+    fontWeight: '800',
   },
   errorBox: {
     backgroundColor: Colors.dangerLight,
     borderWidth: 1,
     borderColor: Colors.dangerBorder,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 14,
   },
   errorText: {
     color: Colors.danger,
     fontSize: 13,
     textAlign: 'center',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   footerInfo: {
-    paddingVertical: 12,
+    paddingVertical: 8,
     alignItems: 'center',
     gap: 4,
   },
   footerTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    color: Colors.textMuted,
+    color: '#0061a5',
   },
   footerText: {
     fontSize: 11,
-    color: Colors.textMuted,
+    color: '#3f4753',
     textAlign: 'center',
   },
 });
