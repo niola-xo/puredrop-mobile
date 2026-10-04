@@ -265,13 +265,27 @@ export default function CheckoutScreen() {
             </Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.primaryGlossBtn}
-            activeOpacity={0.85}
-            onPress={() => router.push('/')}
-          >
-            <Text style={styles.primaryGlossBtnText}>Back to Products</Text>
-          </TouchableOpacity>
+          <View style={styles.confBtnContainer}>
+            {confirmation.orderType === 'subscription' && (
+              <TouchableOpacity
+                style={styles.primaryGlossBtn}
+                activeOpacity={0.85}
+                onPress={() => router.push('/account')}
+              >
+                <Text style={styles.primaryGlossBtnText}>Manage My Subscription</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={confirmation.orderType === 'subscription' ? styles.secondaryGlassBtn : styles.primaryGlossBtn}
+              activeOpacity={0.85}
+              onPress={() => router.push('/')}
+            >
+              <Text style={confirmation.orderType === 'subscription' ? styles.secondaryGlassBtnText : styles.primaryGlossBtnText}>
+                Return to PureDrop Home
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     );
@@ -938,16 +952,42 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   primaryGlossBtn: {
+    width: '100%',
     backgroundColor: '#0099ff',
-    paddingVertical: 14,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
     borderRadius: 24,
     alignItems: 'center',
+    justifyContent: 'center',
     ...Shadows.buttonGloss,
   },
   primaryGlossBtnText: {
     color: '#ffffff',
     fontSize: 15,
     fontWeight: '800',
+    textAlign: 'center',
+  },
+  confBtnContainer: {
+    width: '100%',
+    marginTop: 10,
+    gap: 10,
+  },
+  secondaryGlassBtn: {
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderWidth: 1.5,
+    borderColor: '#bae6fd',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryGlassBtnText: {
+    color: '#0061a5',
+    fontSize: 14,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   btnDisabled: {
     opacity: 0.6,
