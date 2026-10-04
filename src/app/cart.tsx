@@ -7,7 +7,7 @@ import { useAuth } from '@/context/auth';
 
 export default function CartScreen() {
   const router = useRouter();
-  const { itemCount, setItemCount } = useCart();
+  const { itemCount, clearCart } = useCart();
   const { user, loading: authLoading, signInWithGoogle } = useAuth();
   const [signInLoading, setSignInLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -95,7 +95,7 @@ export default function CartScreen() {
             <Text style={styles.summaryItems}>{itemCount} item(s) selected</Text>
             <TouchableOpacity
               style={styles.clearButton}
-              onPress={() => setItemCount(0)}
+              onPress={() => clearCart()}
             >
               <Text style={styles.clearButtonText}>Clear Cart</Text>
             </TouchableOpacity>

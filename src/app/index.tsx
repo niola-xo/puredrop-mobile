@@ -1,21 +1,111 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
 import { Colors } from '@/constants/theme';
+import { supabase } from '@/lib/supabase';
 import { useCart } from '@/context/cart';
 import { useAuth } from '@/context/auth';
 
-export default function ProductsScreen() {
-  const { itemCount, setItemCount } = useCart();
-  const { user, signInWithGoogle } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(false);
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price_ngn: number;
+  sort_order: number;
+}
 
-  const handleAddToCart = () => {
-    // AC-M2.5: Pressing "Add to cart" asks signed-out users to sign in
+export default function ProductsScreen() {
+  const { addToCart } = useCart();
+  const { user, signInWithGoogle } = useAuth();
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [addingId, setAddingId] = useState<string | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { data, error: fetchError } = await supabase
+        .from('products')
+        .select('id, name, description, price_ngn, sort_order')
+        .eq('active', true)
+        .order('sort_order', { ascending: true });
+
+      if (fetchError) {
+        setError(fetchError.message);
+      } else if (data) {
+        setProducts(data);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    supabase
+      .from('products')
+      .select('id, name, description, price_ngn, sort_order')
+      .eq('active', true)
+      .order('sort_order', { ascending: true })
+      .then(
+        ({ data, error: fetchError }) => {
+          if (!active) return;
+          if (fetchError) {
+            setError(fetchError.message);
+          } else if (data) {
+            setProducts(data);
+          }
+          setLoading(false);
+        },
+        (err: unknown) => {
+          if (!active) return;
+          setError(err instanceof Error ? err.message : 'Failed to load products');
+          setLoading(false);
+        }
+      );
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleAddToCart = async (product: Product) => {
+    // AC-M2.5: Ask signed-out users to sign in
     if (!user) {
       setShowAuthModal(true);
       return;
     }
-    setItemCount(itemCount + 1);
+
+    setAddingId(product.id);
+    const { error: addError } = await addToCart(product.id);
+    setAddingId(null);
+
+    if (addError) {
+      setFeedbackMessage(`Error: ${addError.message}`);
+    } else {
+      setFeedbackMessage(`Added ${product.name} to cart!`);
+    }
+
+    setTimeout(() => {
+      setFeedbackMessage(null);
+    }, 2500);
+  };
+
+  const formatNaira = (price: number) => {
+    return `₦${price.toLocaleString()}`;
+  };
+
+  const getProductIcon = (name: string) => {
+    const lower = name.toLowerCase();
+    if (lower.includes('dispenser') || lower.includes('refill')) return '🚰';
+    if (lower.includes('table water') || lower.includes('pack')) return '📦';
+    return '💧';
   };
 
   return (
@@ -28,68 +118,62 @@ export default function ProductsScreen() {
         </Text>
       </View>
 
+      {feedbackMessage && (
+        <View style={styles.feedbackBanner}>
+          <Text style={styles.feedbackText}>{feedbackMessage}</Text>
+        </View>
+      )}
+
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Featured Products</Text>
-
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardIcon}>💧</Text>
-            <View style={styles.cardInfo}>
-              <Text style={styles.cardTitle}>19L Water Dispenser Bottle</Text>
-              <Text style={styles.cardDescription}>
-                Purified natural spring water in a durable, reusable 19-litre refill bottle.
-              </Text>
-              <Text style={styles.cardPrice}>₦2,400</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={styles.addButton}
-            activeOpacity={0.8}
-            onPress={handleAddToCart}
-          >
-            <Text style={styles.addButtonText}>Add to Cart</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Our Products</Text>
+          <TouchableOpacity onPress={fetchProducts}>
+            <Text style={styles.refreshText}>Refresh</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardIcon}>📦</Text>
-            <View style={styles.cardInfo}>
-              <Text style={styles.cardTitle}>750ml Bottled Water (Pack of 12)</Text>
-              <Text style={styles.cardDescription}>
-                Convenient 12-pack of 750ml pure drinking water bottles for on-the-go hydration.
-              </Text>
-              <Text style={styles.cardPrice}>₦3,600</Text>
-            </View>
+        {loading ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={styles.loadingText}>Loading fresh products...</Text>
           </View>
-          <TouchableOpacity
-            style={styles.addButton}
-            activeOpacity={0.8}
-            onPress={handleAddToCart}
-          >
-            <Text style={styles.addButtonText}>Add to Cart</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardIcon}>🚰</Text>
-            <View style={styles.cardInfo}>
-              <Text style={styles.cardTitle}>Manual Water Pump Dispenser</Text>
-              <Text style={styles.cardDescription}>
-                Easy-to-use manual hand-press pump for 19L water bottles. No electricity needed.
-              </Text>
-              <Text style={styles.cardPrice}>₦5,500</Text>
-            </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Could not load products: {error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchProducts}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={styles.addButton}
-            activeOpacity={0.8}
-            onPress={handleAddToCart}
-          >
-            <Text style={styles.addButtonText}>Add to Cart</Text>
-          </TouchableOpacity>
-        </View>
+        ) : products.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No products available at the moment.</Text>
+          </View>
+        ) : (
+          products.map((product) => (
+            <View key={product.id} style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardIcon}>{getProductIcon(product.name)}</Text>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardTitle}>{product.name}</Text>
+                  <Text style={styles.cardDescription}>{product.description}</Text>
+                  <Text style={styles.cardPrice}>{formatNaira(product.price_ngn)}</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.addButton}
+                activeOpacity={0.8}
+                onPress={() => handleAddToCart(product)}
+                disabled={addingId === product.id}
+              >
+                {addingId === product.id ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.addButtonText}>Add to Cart</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
       </View>
 
       {/* Auth Prompt Modal (AC-M2.5) */}
@@ -144,7 +228,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   heroBadge: {
     alignSelf: 'flex-start',
@@ -169,14 +253,78 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     lineHeight: 20,
   },
+  feedbackBanner: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  feedbackText: {
+    color: '#065f46',
+    fontWeight: '600',
+    fontSize: 14,
+  },
   section: {
     gap: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: Colors.text,
-    marginBottom: 4,
+  },
+  refreshText: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  centerContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    gap: 10,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: Colors.textMuted,
+  },
+  errorContainer: {
+    padding: 20,
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    alignItems: 'center',
+    gap: 10,
+  },
+  errorText: {
+    color: Colors.danger,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  emptyContainer: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: Colors.textMuted,
+    fontSize: 14,
   },
   card: {
     backgroundColor: Colors.surface,
