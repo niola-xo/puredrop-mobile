@@ -1,0 +1,28 @@
+{
+  "cli": {
+    "version": ">= 15.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://nsmpftalooejxcnqlfio.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zbXBmdGFsb29lanhjbnFsZmlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4NDYwNDksImV4cCI6MjEwNjQyMjA0OX0.2HaoY57d8T8xCui78qLSLv4d1svOkQQKzQgg6mV8pgs",
+        "EXPO_PUBLIC_WEB_URL": "https://puredrop-swart.vercel.app"
+      }
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
