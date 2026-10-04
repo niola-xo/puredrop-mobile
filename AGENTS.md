@@ -1,41 +1,45 @@
-This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+# AGENTS.md: PureDrop Mobile project rules
 
-## Expo has changed — do not trust your training data
+## Source of truth
+- Requirements are in `docs/PRD-lesson3.md`. Read the whole file before any task.
+- If this file and the PRD disagree, the PRD decides WHAT to build and this file decides HOW to work.
+- This repo is the MOBILE repo. Only do phases tagged [MOBILE]. The website lives in a different repo.
 
-Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
+## How to work
+- Work one phase at a time, in the order of PRD section 8. Stop at the end of each phase and wait for me to say "continue".
+- Before saying a phase is finished, verify it yourself: run the type check, lint, and the web export build, start the app, and go through that phase's test steps.
+- Report every acceptance criterion as PASS, FAIL or MANUAL. PASS needs evidence (what you ran, what you saw). Anything that needs my physical phone or a dashboard step is MANUAL with exact steps for me. Never mark MANUAL items as PASS.
+- Never skip, shrink or quietly change a requirement. If blocked or unsure, say so and ask.
+- Do not use the words "done", "complete" or "working" without evidence.
+- Keep `PROGRESS.md` at the project root: one line per phase with its status and what was verified.
 
-1. Read the major version of the `expo` package in `package.json`.
-2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
-3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
+## Stack and commands
+- Expo (React Native), TypeScript, Expo Router, `@supabase/supabase-js`, deployed to Vercel as a web export, Android `.apk` built with EAS.
+- Check the current Expo docs before using any API. Do not rely on memory for Expo, Supabase auth for React Native, or EAS setup.
+- Commands: `npm install`, `npx expo start`, `npx expo export --platform web`, `npx tsc --noEmit`, `npm run lint`.
 
-## Commands
+## Conventions
+- The mobile app uses ONLY public values: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_WEB_URL`. Never add a service role key or any other secret to this repo.
+- `EXPO_PUBLIC_` values are baked in at build time. After changing them, remind me to rebuild and redeploy.
+- Session storage: AsyncStorage on native, the default browser storage on web. Turn off URL session detection on native.
+- Keep Supabase code in one place (`lib/supabase.ts`). Keep cart logic in one hook or context so the Products and Cart tabs stay in sync.
+- Money is shown like `₦2,400`. Keep the UI simple, clean and consistent with the website (blue and white).
+- No new dependencies without telling me why.
 
-Use `bunx` instead of `npx` if the project uses bun (`bun.lock` present).
+## Secrets and safety
+- Never invent keys. When you need a value, list the exact variable name and stop.
+- Never commit `.env*` files. Keep `.env.example` up to date (names only).
+- Do not run destructive commands (deleting files outside the project, force pushes) without asking.
+- Do not change Vercel, Supabase, Google or Expo dashboard settings yourself. Give me the exact steps and I will do them.
 
-```bash
-npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
-npx expo start              # start the dev server
-npx expo lint               # lint
-npx tsc --noEmit            # typecheck
-npx expo-doctor             # diagnose dependency and config issues
-npx expo install --fix      # fix incompatible package versions
-```
+## Known pitfalls
+- Google login must be tested on the deployed Vercel link, in Expo Go, and in the `.apk`. Each uses a different redirect URL, and each must be allowed in Supabase Auth URL Configuration. List the exact URLs for me.
+- The Vercel link must open in an incognito window without a Vercel login (Deployment Protection). Remind me to check.
+- Every route must work on page refresh in the web build (single page app rewrite).
+- The mobile app and the website must resolve to the SAME Supabase user. Check there is one user, not two.
+- Realtime only works if the table is in the `supabase_realtime` publication and row level security allows the user to select their rows.
 
-Run lint and typecheck before declaring any task done.
-
-## Navigation & Routing
-
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
-
-## Building with EAS
-
-Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
-Docs: https://docs.expo.dev/eas/index.md
-
-## Rules
-
-- If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
-- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
-- Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+## Communication
+- Start each phase with a plan in at most 5 bullets.
+- End each phase with the PASS, FAIL and MANUAL list and a short list of the steps I must do.
+- Keep messages short and plain. Do not use em dashes.
