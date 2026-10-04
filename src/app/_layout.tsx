@@ -74,6 +74,12 @@ function TabLayoutContent() {
           tabBarIcon: () => <TabIcon icon="👤" />,
         }}
       />
+      <Tabs.Screen
+        name="+not-found"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
