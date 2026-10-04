@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './auth';
 
@@ -132,6 +133,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       supabase.removeChannel(channel);
     };
   }, [user, refreshCart]);
+
+  // AC-M4.3: Reload cart when app returns to foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        refreshCart();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [refreshCart]);
 
   const addToCart = async (productId: string, qty = 1): Promise<{ error?: Error }> => {
     if (!user) {
