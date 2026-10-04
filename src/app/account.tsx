@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Colors } from '@/constants/theme';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { Colors, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 
 export default function AccountScreen() {
   const { user, loading, signInWithGoogle, signOut } = useAuth();
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const webUrl = process.env.EXPO_PUBLIC_WEB_URL || 'https://puredrop-swart.vercel.app';
 
   const handleSignIn = async () => {
     setActionLoading(true);
@@ -28,6 +30,10 @@ export default function AccountScreen() {
     setActionLoading(false);
   };
 
+  const openWebStore = () => {
+    Linking.openURL(webUrl).catch(() => {});
+  };
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -39,7 +45,7 @@ export default function AccountScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {user ? (
-        // Signed In State
+        /* Signed In State */
         <>
           <View style={styles.profileCard}>
             <View style={styles.avatar}>
@@ -62,7 +68,30 @@ export default function AccountScreen() {
             </View>
           )}
 
-          <View style={styles.section}>
+          {/* Delivery Region Card */}
+          <View style={styles.infoCard}>
+            <Text style={styles.infoSectionTitle}>📍 Delivery Coverage</Text>
+            <Text style={styles.infoSectionBody}>
+              PureDrop delivers to Akoka, Yaba, Surulere, and Lagos Mainland. Realtime cart synchronization is active between this mobile app and the web shop.
+            </Text>
+          </View>
+
+          {/* Connected Web Shop */}
+          <View style={styles.infoCard}>
+            <Text style={styles.infoSectionTitle}>🌐 PureDrop Web Shop</Text>
+            <Text style={styles.infoSectionBody}>
+              Manage admin dashboard or subscriptions from the web portal.
+            </Text>
+            <TouchableOpacity
+              style={styles.linkButton}
+              activeOpacity={0.7}
+              onPress={openWebStore}
+            >
+              <Text style={styles.linkButtonText}>Visit Web Shop ↗</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.actionsSection}>
             <TouchableOpacity
               style={styles.logoutButton}
               activeOpacity={0.8}
@@ -70,23 +99,23 @@ export default function AccountScreen() {
               disabled={actionLoading}
             >
               {actionLoading ? (
-                <ActivityIndicator size="small" color="#ffffff" />
+                <ActivityIndicator size="small" color={Colors.danger} />
               ) : (
-                <Text style={styles.logoutButtonText}>Log out</Text>
+                <Text style={styles.logoutButtonText}>Log Out</Text>
               )}
             </TouchableOpacity>
           </View>
         </>
       ) : (
-        // Signed Out State
+        /* Signed Out State */
         <>
           <View style={styles.profileCard}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>👤</Text>
+              <Text style={styles.avatarInitial}>👤</Text>
             </View>
             <Text style={styles.userName}>Guest User</Text>
             <Text style={styles.userEmail}>
-              Sign in with your Google account to sync your cart across your phone and the website.
+              Sign in with your Google account to sync your cart live across your phone and the website, and checkout quickly.
             </Text>
           </View>
 
@@ -96,10 +125,10 @@ export default function AccountScreen() {
             </View>
           )}
 
-          <View style={styles.section}>
+          <View style={styles.actionsSection}>
             <TouchableOpacity
               style={styles.googleButton}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
               onPress={handleSignIn}
               disabled={actionLoading}
             >
@@ -113,11 +142,11 @@ export default function AccountScreen() {
         </>
       )}
 
-      <View style={styles.infoSection}>
-        <Text style={styles.infoTitle}>About PureDrop Mobile</Text>
-        <Text style={styles.infoText}>
-          Version 1.0.0{'\n'}
-          Connected to shared Supabase project (Google Auth, Realtime, Database)
+      {/* App Version & Details */}
+      <View style={styles.footerInfo}>
+        <Text style={styles.footerTitle}>PureDrop Mobile v1.0.0</Text>
+        <Text style={styles.footerText}>
+          Connected to shared Supabase project · Lagos Timezone (UTC+1)
         </Text>
       </View>
     </ScrollView>
@@ -137,64 +166,102 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    gap: 20,
+    gap: 16,
+    paddingBottom: 40,
   },
   profileCard: {
     backgroundColor: Colors.surface,
     padding: 24,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: Colors.border,
     alignItems: 'center',
     gap: 8,
+    ...Shadows.card,
   },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: Colors.primaryLight,
+    borderWidth: 2,
+    borderColor: Colors.primaryBorder,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
-  avatarText: {
-    fontSize: 32,
-  },
   avatarInitial: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '800',
     color: Colors.primaryDark,
   },
   userName: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 19,
+    fontWeight: '800',
     color: Colors.text,
+    letterSpacing: -0.2,
   },
   userEmail: {
     fontSize: 14,
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     textAlign: 'center',
+    lineHeight: 20,
   },
   verifiedBadge: {
-    backgroundColor: '#ecfdf5',
-    paddingHorizontal: 10,
+    backgroundColor: Colors.successLight,
+    paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.successBorder,
     marginTop: 4,
   },
   verifiedText: {
-    color: '#059669',
+    color: '#065f46',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  section: {
+  infoCard: {
+    backgroundColor: Colors.surface,
+    padding: 18,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 8,
+    ...Shadows.card,
+  },
+  infoSectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  infoSectionBody: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 19,
+  },
+  linkButton: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: Colors.surfaceSubtle,
+  },
+  linkButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  actionsSection: {
     gap: 12,
   },
   googleButton: {
     backgroundColor: Colors.primary,
-    paddingVertical: 14,
-    borderRadius: 10,
+    paddingVertical: 15,
+    borderRadius: 14,
     alignItems: 'center',
+    ...Shadows.button,
   },
   googleButtonText: {
     color: '#ffffff',
@@ -202,44 +269,44 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   logoutButton: {
-    backgroundColor: Colors.danger,
+    backgroundColor: Colors.dangerLight,
+    borderWidth: 1,
+    borderColor: Colors.dangerBorder,
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 14,
     alignItems: 'center',
   },
   logoutButtonText: {
-    color: '#ffffff',
+    color: Colors.danger,
     fontSize: 15,
     fontWeight: '700',
   },
   errorBox: {
-    backgroundColor: '#fef2f2',
+    backgroundColor: Colors.dangerLight,
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: Colors.dangerBorder,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   errorText: {
     color: Colors.danger,
     fontSize: 13,
     textAlign: 'center',
+    fontWeight: '600',
   },
-  infoSection: {
-    backgroundColor: Colors.surface,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 6,
+  footerInfo: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    gap: 4,
   },
-  infoTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  infoText: {
+  footerTitle: {
     fontSize: 13,
+    fontWeight: '700',
     color: Colors.textMuted,
-    lineHeight: 18,
+  },
+  footerText: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    textAlign: 'center',
   },
 });
