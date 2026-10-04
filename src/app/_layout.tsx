@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import { Text, StyleSheet } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { CartProvider, useCart } from '@/context/cart';
+import { AuthProvider } from '@/context/auth';
 
 function TabIcon({ icon }: { icon: string }) {
   return <Text style={styles.tabIcon}>{icon}</Text>;
@@ -86,9 +87,11 @@ function TabLayoutContent() {
 
 export default function TabLayout() {
   return (
-    <CartProvider>
-      <TabLayoutContent />
-    </CartProvider>
+    <AuthProvider>
+      <CartProvider>
+        <TabLayoutContent />
+      </CartProvider>
+    </AuthProvider>
   );
 }
 

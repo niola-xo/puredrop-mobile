@@ -1,18 +1,75 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useCart } from '@/context/cart';
+import { useAuth } from '@/context/auth';
 
 export default function CartScreen() {
   const router = useRouter();
   const { itemCount, setItemCount } = useCart();
-  const webUrl = process.env.EXPO_PUBLIC_WEB_URL || 'https://puredrop.vercel.app';
+  const { user, loading: authLoading, signInWithGoogle } = useAuth();
+  const [signInLoading, setSignInLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const webUrl = process.env.EXPO_PUBLIC_WEB_URL || 'https://puredrop-swart.vercel.app';
 
   const handleOpenCheckout = () => {
     const target = `${webUrl.replace(/\/$/, '')}/checkout`;
     Linking.openURL(target).catch(() => {});
   };
+
+  const handleSignIn = async () => {
+    setSignInLoading(true);
+    setErrorMessage(null);
+    const { error } = await signInWithGoogle();
+    if (error) {
+      setErrorMessage(error.message);
+    }
+    setSignInLoading(false);
+  };
+
+  if (authLoading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
+  // Auth gate: Ask signed-out users to sign in (AC-M2.5)
+  if (!user) {
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.authGateContainer}>
+          <Text style={styles.authGateIcon}>🔒</Text>
+          <Text style={styles.authGateTitle}>Sign in to view your cart</Text>
+          <Text style={styles.authGateSubtitle}>
+            Sign in with Google to sync your cart live between your phone and the PureDrop website.
+          </Text>
+
+          {errorMessage && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={styles.signInButton}
+            activeOpacity={0.8}
+            onPress={handleSignIn}
+            disabled={signInLoading}
+          >
+            {signInLoading ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Text style={styles.signInButtonText}>Continue with Google</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -68,9 +125,68 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  centerContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
+  },
   content: {
     padding: 16,
     flexGrow: 1,
+  },
+  authGateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 64,
+    gap: 14,
+  },
+  authGateIcon: {
+    fontSize: 56,
+    marginBottom: 8,
+  },
+  authGateTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  authGateSubtitle: {
+    fontSize: 14,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    maxWidth: 290,
+    lineHeight: 20,
+  },
+  signInButton: {
+    marginTop: 8,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 10,
+    width: '100%',
+    maxWidth: 300,
+    alignItems: 'center',
+  },
+  signInButtonText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  errorBox: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    padding: 12,
+    borderRadius: 8,
+    width: '100%',
+    maxWidth: 300,
+  },
+  errorText: {
+    color: Colors.danger,
+    fontSize: 13,
+    textAlign: 'center',
   },
   emptyContainer: {
     flex: 1,

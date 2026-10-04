@@ -1,10 +1,22 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useCart } from '@/context/cart';
+import { useAuth } from '@/context/auth';
 
 export default function ProductsScreen() {
   const { itemCount, setItemCount } = useCart();
+  const { user, signInWithGoogle } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const handleAddToCart = () => {
+    // AC-M2.5: Pressing "Add to cart" asks signed-out users to sign in
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    setItemCount(itemCount + 1);
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -18,7 +30,7 @@ export default function ProductsScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Featured Products</Text>
-        
+
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardIcon}>💧</Text>
@@ -33,7 +45,7 @@ export default function ProductsScreen() {
           <TouchableOpacity
             style={styles.addButton}
             activeOpacity={0.8}
-            onPress={() => setItemCount(itemCount + 1)}
+            onPress={handleAddToCart}
           >
             <Text style={styles.addButtonText}>Add to Cart</Text>
           </TouchableOpacity>
@@ -53,7 +65,7 @@ export default function ProductsScreen() {
           <TouchableOpacity
             style={styles.addButton}
             activeOpacity={0.8}
-            onPress={() => setItemCount(itemCount + 1)}
+            onPress={handleAddToCart}
           >
             <Text style={styles.addButtonText}>Add to Cart</Text>
           </TouchableOpacity>
@@ -73,12 +85,46 @@ export default function ProductsScreen() {
           <TouchableOpacity
             style={styles.addButton}
             activeOpacity={0.8}
-            onPress={() => setItemCount(itemCount + 1)}
+            onPress={handleAddToCart}
           >
             <Text style={styles.addButtonText}>Add to Cart</Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Auth Prompt Modal (AC-M2.5) */}
+      <Modal
+        visible={showAuthModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAuthModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalIcon}>🔒</Text>
+            <Text style={styles.modalTitle}>Sign In Required</Text>
+            <Text style={styles.modalSubtitle}>
+              Please sign in with Google to add items to your cart and sync across devices.
+            </Text>
+            <TouchableOpacity
+              style={styles.modalSignInButton}
+              activeOpacity={0.8}
+              onPress={() => {
+                setShowAuthModal(false);
+                signInWithGoogle();
+              }}
+            >
+              <Text style={styles.modalSignInText}>Continue with Google</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalCancelButton}
+              onPress={() => setShowAuthModal(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -178,5 +224,56 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '700',
     fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+    gap: 12,
+  },
+  modalIcon: {
+    fontSize: 40,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  modalSignInButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  modalSignInText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  modalCancelButton: {
+    paddingVertical: 8,
+  },
+  modalCancelText: {
+    color: Colors.textMuted,
+    fontWeight: '600',
+    fontSize: 13,
   },
 });
