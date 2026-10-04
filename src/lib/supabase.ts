@@ -36,7 +36,9 @@ export async function signInWithGoogle(): Promise<{ error?: Error }> {
     }
 
     // Native flow (Expo Go & standalone APK)
-    const redirectUrl = Linking.createURL('auth/callback');
+    // Using the whitelisted HTTPS URL ensures Google and Supabase never reject the scheme,
+    // and WebBrowser.openAuthSessionAsync automatically dismisses the tab upon redirect
+    const redirectUrl = 'https://puredrop-mobile.vercel.app/auth/callback';
     console.log('[PureDrop Auth] Native Redirect URL:', redirectUrl);
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
