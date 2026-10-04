@@ -2,6 +2,7 @@
   "expo": {
     "name": "PureDrop",
     "slug": "puredrop",
+    "owner": "niola-xo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -38,6 +39,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fdae9677-fc35-4fc8-a66a-cb6099c38d89"
+      }
     }
   }
 }
