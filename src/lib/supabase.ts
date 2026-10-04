@@ -22,7 +22,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 export async function signInWithGoogle(): Promise<{ error?: Error }> {
   try {
     if (Platform.OS === 'web') {
-      const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
+      const redirectUrl = typeof window !== 'undefined'
+        ? `${window.location.origin}/auth/callback`
+        : undefined;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -35,6 +37,7 @@ export async function signInWithGoogle(): Promise<{ error?: Error }> {
 
     // Native flow (Expo Go & standalone APK)
     const redirectUrl = Linking.createURL('auth/callback');
+    console.log('[PureDrop Auth] Native Redirect URL:', redirectUrl);
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

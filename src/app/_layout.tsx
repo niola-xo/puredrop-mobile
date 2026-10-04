@@ -81,6 +81,12 @@ function TabLayoutContent() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="auth/callback"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
